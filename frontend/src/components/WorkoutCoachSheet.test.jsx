@@ -63,6 +63,18 @@ beforeEach(() => {
 afterEach(() => { act(() => root.unmount()); host.remove() })
 
 describe('Ask the Coach mid-workout', () => {
+  it('shows the exercise a swap brings in, and "Suggest another" asks again with what was said', async () => {
+    mocks.pending = adapt({ changes: [{ id: 'a0', type: 'swap', entry: 1, exId: CURL, to: BENCH, why: 'The curl bench is taken.' }] })
+    render(<WorkoutCoachSheet entryIdx={1} close={() => {}} />)
+    expect(host.querySelector('.adapt-media')).toBeTruthy()
+    const box = host.querySelector('.adapt-retry input')
+    const setVal = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
+    act(() => { setVal.call(box, 'I’d rather use dumbbells'); box.dispatchEvent(new Event('input', { bubbles: true })) })
+    await act(async () => { [...host.querySelectorAll('.adapt-retry button')][0].click() })
+    expect(api.resolvePending).toHaveBeenCalledWith({ dismissed: true })
+    expect(api.requestAdapt).toHaveBeenCalledWith({ entry: 1, reason: 'short', text: 'I’d rather use dumbbells' })
+  })
+
   it('asks with the exercise and the reason picked', async () => {
     render(<WorkoutCoachSheet entryIdx={1} close={() => {}} />)
     expect(host.textContent).toContain('Dumbbell Biceps Curl')

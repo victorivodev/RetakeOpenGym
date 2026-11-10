@@ -3751,4 +3751,8 @@ export default {
   "Deficit spread over {0} diet days a week; on the free meal day you eat about your daily burn. Includes a 10% margin.": "Deficit spread over {0} diet days a week; on the free meal day you eat about your daily burn. Includes a 10% margin.",
   "Deficit spread over the 7 days of the week. Includes a 10% margin.": "Deficit spread over the 7 days of the week. Includes a 10% margin.",
   "At this pace the target would fall below the safe minimum ({0}). The most you can lose safely is about {1} kg per week.": "At this pace the target would fall below the safe minimum ({0}). The most you can lose safely is about {1} kg per week.",
+  "I don’t want {0}. Suggest something else.": "I don’t want {0}. Suggest something else.",
+  "Suggest something else.": "Suggest something else.",
+  "Reply to the Coach (e.g. I’d rather use dumbbells)": "Reply to the Coach (e.g. I’d rather use dumbbells)",
+  "Suggest another": "Suggest another",
 }

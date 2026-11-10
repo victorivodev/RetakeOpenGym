@@ -3731,4 +3731,8 @@ export default {
   "Deficit spread over {0} diet days a week; on the free meal day you eat about your daily burn. Includes a 10% margin.": "Défice dividido em {0} dias de dieta por semana; no dia da refeição livre come perto do seu gasto diário. Já inclui 10% de margem.",
   "Deficit spread over the 7 days of the week. Includes a 10% margin.": "Défice dividido pelos 7 dias da semana. Já inclui 10% de margem.",
   "At this pace the target would fall below the safe minimum ({0}). The most you can lose safely is about {1} kg per week.": "Nesse ritmo a meta ficaria abaixo do mínimo seguro ({0}). O máximo seguro para você é cerca de {1} kg por semana.",
+  "I don’t want {0}. Suggest something else.": "Não quero {0}. Sugira outra coisa.",
+  "Suggest something else.": "Sugira outra coisa.",
+  "Reply to the Coach (e.g. I’d rather use dumbbells)": "Responda ao Coach (ex.: prefiro com halteres)",
+  "Suggest another": "Quero outra sugestão",
 }
