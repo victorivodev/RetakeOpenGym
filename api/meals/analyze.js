@@ -120,13 +120,13 @@ export function normalize(out) {
   };
 }
 
-const failed = e => (e?.status === 429
+const failed = e => (console.error('meal AI error:', e?.status || '', String(e?.message || e).slice(0, 300)), e?.status === 429
   ? { ok: false, status: 429, error: 'the meal AI is busy, try again in a minute' }
   : { ok: false, status: 502, error: 'the meal AI could not be reached' });
 
 const parsedMeal = text => {
   try { return { ok: true, meal: normalize(JSON.parse(text)) }; }
-  catch { return { ok: false, status: 502, error: 'the meal AI answered in an unexpected format' }; }
+  catch { console.error('meal AI unreadable answer:', String(text).slice(0, 200)); return { ok: false, status: 502, error: 'the meal AI answered in an unexpected format' }; }
 };
 
 let anthropicClient = null;
@@ -173,6 +173,7 @@ async function viaGemini(req, env, create) {
     });
   } catch (e) { return failed(e); }
   const reason = res?.candidates?.[0]?.finishReason;
+  if (reason && reason !== 'STOP') console.error('meal AI gemini finish:', reason, res?.promptFeedback?.blockReason || '');
   if (res?.promptFeedback?.blockReason || reason === 'SAFETY' || reason === 'PROHIBITED_CONTENT') {
     return { ok: false, status: 422, error: 'the meal AI could not analyse this input' };
   }
