@@ -74,16 +74,16 @@ describe('Admin user drill-down', () => {
     const sheet = render(mocks.sheets[0](() => {}))
     await settle()
     const buttons = [...sheet.querySelectorAll('button')].map(b => b.textContent)
-    expect(buttons).toContain('Disable account')
+    expect(buttons).toContain('Desativar conta')
     // The one real session is listed; the two shapeless entries are skipped, not drawn as blanks.
     const rows = [...sheet.querySelectorAll('.list > div')]
     expect(rows.length).toBe(1)
     expect(rows[0].textContent).toContain('Push day')
-    expect(rows[0].textContent).toContain('1 sets')
+    expect(rows[0].textContent).toContain('1 séries')
   })
 })
 
-// The users call failing, or answering without a list, used to leave "Loading…" up for good —
+// The users call failing, or answering without a list, used to leave "Carregando…" up for good —
 // what a paired phone that had lost its pairing showed its admin, and all it showed.
 describe('Admin when the users cannot be loaded', () => {
   const text = page => page.textContent
@@ -91,9 +91,9 @@ describe('Admin when the users cannot be loaded', () => {
     mocks.answers['/api/admin/users'] = {}
     const page = render(<Admin />)
     await settle()
-    expect(text(page)).not.toContain('Loading…')
-    expect(text(page)).toContain('Could not load the users')
-    expect(text(page)).toContain('The server answered without a list of users.')
+    expect(text(page)).not.toContain('Carregando…')
+    expect(text(page)).toContain('Não deu para carregar os usuários')
+    expect(text(page)).toContain('O servidor respondeu sem a lista de usuários.')
   })
 
   it('a failed call says why, and "Try again" loads the list once the server answers', async () => {
@@ -103,11 +103,11 @@ describe('Admin when the users cannot be loaded', () => {
     expect(page.querySelector('[role="alert"]').textContent).toContain('not found')
 
     mocks.answers['/api/admin/users'] = { users: [{ id: 'u1', name: 'Mallory', workouts: 2, lastSync: null, disabled: false }], invite_only: false }
-    const retry = [...page.querySelectorAll('button')].find(b => b.textContent === 'Try again')
+    const retry = [...page.querySelectorAll('button')].find(b => b.textContent === 'Tentar de novo')
     act(() => retry.click())
     await settle()
     expect(page.querySelector('[role="alert"]')).toBeNull()
-    expect(text(page)).toContain('1 users')
+    expect(text(page)).toContain('1 usuários')
     expect([...page.querySelectorAll('.item')].some(el => el.textContent.includes('Mallory'))).toBe(true)
   })
 
@@ -115,10 +115,10 @@ describe('Admin when the users cannot be loaded', () => {
     const page = render(<Admin />)
     await settle()
     delete mocks.answers['/api/admin/users']
-    const refresh = page.querySelector('[aria-label="refresh"]')
+    const refresh = page.querySelector('[aria-label="atualizar"]')
     act(() => refresh.click())
     await settle()
-    expect(text(page)).toContain('The last update failed')
+    expect(text(page)).toContain('A última atualização falhou')
     expect([...page.querySelectorAll('.item')].some(el => el.textContent.includes('Mallory'))).toBe(true)
   })
 })
@@ -137,16 +137,16 @@ describe('Admin roles', () => {
     mocks.answers['/api/admin/users'].users.push({ id: 'adm', name: 'Admin', admin: true, owner: true, workouts: 0 })
     mocks.answers['/api/admin/audit'] = { events: [], enabled: true, total: 0, retention: {} }
     const { page, buttons } = await openMallory()
-    expect(buttons).toContain('Make admin')
-    expect(page.querySelector('[aria-label="clear log"]')).toBeTruthy()
-    expect(page.textContent).toContain('owner')
+    expect(buttons).toContain('Tornar admin')
+    expect(page.querySelector('[aria-label="limpar registro"]')).toBeTruthy()
+    expect(page.textContent).toContain('dono')
   })
   it('an admin who is not the owner gets neither', async () => {
     mocks.answers['/api/admin/users'].users.push({ id: 'adm', name: 'Admin', admin: true, owner: false, workouts: 0 })
     mocks.answers['/api/admin/audit'] = { events: [], enabled: true, total: 0, retention: {} }
     const { page, buttons } = await openMallory()
-    expect(buttons).not.toContain('Make admin')
-    expect(buttons).toContain('Disable account')
-    expect(page.querySelector('[aria-label="clear log"]')).toBeNull()
+    expect(buttons).not.toContain('Tornar admin')
+    expect(buttons).toContain('Desativar conta')
+    expect(page.querySelector('[aria-label="limpar registro"]')).toBeNull()
   })
 })

@@ -59,7 +59,7 @@ describe('AdminCoach keeps the app\'s own config current', () => {
     await flush()
     expect(mocks.refreshConfig).toHaveBeenCalledTimes(1)
 
-    const setUp = [...host.querySelectorAll('button')].find(b => b.textContent.includes('Set up the Coach'))
+    const setUp = [...host.querySelectorAll('button')].find(b => b.textContent.includes('Configurar o Coach'))
     expect(setUp).toBeTruthy()
     await act(async () => { setUp.click() })
     await flush()

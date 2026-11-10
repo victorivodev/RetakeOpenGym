@@ -6,7 +6,7 @@ import Admin from './Admin.jsx'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
-/* "Recovery code" in a user's drill-down (#584): on every instance, for a profile that is not an
+/* "Código de recuperação" in a user's drill-down (#584): on every instance, for a profile that is not an
    admin; for an admin only when the viewer is the owner; never for the owner (whose way back is
    the server command) or oneself. Asks first, then shows the code exactly once, locked. */
 const mocks = vi.hoisted(() => ({ answers: {}, sheets: [], posts: [], confirm: vi.fn(), me: { id: 'adm', name: 'Admin', admin: true } }))
@@ -77,10 +77,10 @@ describe('Admin → Recovery code', () => {
   it('is there for a plain profile on an instance without password sign-in, asks, then shows the code once, locked', async () => {
     mocks.answers['/api/admin/user'] = detail()
     const sheet = await openMallory()
-    act(() => button(sheet, 'Recovery code').click())
+    act(() => button(sheet, 'Código de recuperação').click())
     expect(mocks.confirm).toHaveBeenCalledTimes(1)
     const ask = mocks.confirm.mock.calls[0][0]
-    expect(ask.title).toBe('Recovery code for Mallory?')
+    expect(ask.title).toBe('Código de recuperação para Mallory?')
     expect(ask.message).not.toMatch(/—/)
     await act(async () => { await ask.onConfirm() })
     expect(mocks.posts).toEqual([{ path: '/api/admin/user/recovery', body: { id: 'u1' } }])
@@ -88,33 +88,33 @@ describe('Admin → Recovery code', () => {
     expect(shown.opts).toEqual({ locked: true })
     const code = render(shown.render(() => {}))
     expect(code.textContent).toContain('K7WQ-2MZP-4HXA')
-    expect(code.textContent).toContain('Lost access?')
+    expect(code.textContent).toContain('Perdeu o acesso?')
   })
   it('shows until when an unused one is good', async () => {
     mocks.answers['/api/admin/user'] = detail({ recoveryUntil: Date.now() + 3600000 })
     const sheet = await openMallory()
-    expect(sheet.textContent).toContain('recovery code until')
+    expect(sheet.textContent).toContain('código de recuperação até')
   })
   it('for an admin only when the viewer is the owner', async () => {
     mocks.answers['/api/admin/user'] = detail({ admin: true })
-    expect(button(await openMallory(), 'Recovery code')).toBeUndefined()
+    expect(button(await openMallory(), 'Código de recuperação')).toBeUndefined()
   })
   it('the owner may make one for an admin', async () => {
     mocks.answers['/api/admin/users'] = { users: [{ id: 'adm', name: 'Admin', owner: true, admin: true, workouts: 0 }, { id: 'u1', name: 'Mallory', workouts: 0, lastSync: null, disabled: false }], invite_only: false }
     mocks.answers['/api/admin/user'] = detail({ admin: true })
-    expect(button(await openMallory(), 'Recovery code')).toBeTruthy()
+    expect(button(await openMallory(), 'Código de recuperação')).toBeTruthy()
   })
   it('never for the owner, who gets the server command instead, nor for a disabled profile', async () => {
     mocks.answers['/api/admin/user'] = detail({ admin: true, owner: true })
     const owner = await openMallory()
-    expect(button(owner, 'Recovery code')).toBeUndefined()
+    expect(button(owner, 'Código de recuperação')).toBeUndefined()
     expect(owner.textContent).toContain('node recover.js')
     mocks.answers['/api/admin/user'] = detail({ disabled: true })
-    expect(button(await openMallory(), 'Recovery code')).toBeUndefined()
+    expect(button(await openMallory(), 'Código de recuperação')).toBeUndefined()
   })
   it('never for oneself', async () => {
     mocks.me = { id: 'u1', name: 'Mallory', admin: true }
     mocks.answers['/api/admin/user'] = detail()
-    expect(button(await openMallory(), 'Recovery code')).toBeUndefined()
+    expect(button(await openMallory(), 'Código de recuperação')).toBeUndefined()
   })
 })
