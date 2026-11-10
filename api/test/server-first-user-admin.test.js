@@ -180,3 +180,19 @@ test('an ADMIN_UIDS admin stays an admin, and does not make the next profile one
   const r = await registerPassword(h, 'Guest', '198.51.100.50');
   assert.equal(r.body.user.admin, false);
 });
+
+test('with INVITE_ONLY, the first profile needs no invite (it makes them); the next one does', async t => {
+  const h = await startServer(t, { env: { FIRST_USER_ADMIN: '1', INVITE_ONLY: '1' } });
+  assert.equal((await h.req('GET', '/api/config')).body.invite_only, false);
+  const first = await registerPasskey(h, 'Ana', '198.51.100.60');
+  assert.equal(first.status, 200);
+  assert.equal(first.body.user.admin, true);
+  assert.equal((await h.req('GET', '/api/config')).body.invite_only, true);
+  assert.equal((await h.req('POST', '/api/register/options', { body: { name: 'Bea' }, ip: '198.51.100.61' })).status, 403);
+  assert.equal((await registerPassword(h, 'Cid', '198.51.100.62')).status, 403);
+});
+
+test('INVITE_ONLY without FIRST_USER_ADMIN keeps even the first profile behind an invite', async t => {
+  const h = await startServer(t, { env: { INVITE_ONLY: '1' } });
+  assert.equal((await h.req('POST', '/api/register/options', { body: { name: 'Ana' }, ip: '198.51.100.70' })).status, 403);
+});
