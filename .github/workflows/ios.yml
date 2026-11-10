@@ -336,6 +336,9 @@ jobs:
       - name: Phone build (pod install retried)
         run: for i in 1 2 3; do npm run build:mobile && break; [ "$i" = 3 ] && exit 1; echo "::warning::build:mobile failed, retry $i"; sleep 30; done
         working-directory: frontend
+        # The UI tests find buttons by their English labels; Retake Gym otherwise starts in pt-BR.
+        env:
+          VITE_DEFAULT_LANG: en
       - run: rm -rf ios/App/App/public/exercise-media
         working-directory: frontend
       - run: ruby ios/ci/add-asset-downloader.rb

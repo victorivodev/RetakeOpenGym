@@ -18,7 +18,9 @@
 import { LANGS } from './i18n-core.js'
 
 const KEYS = Object.keys(LANGS)
-export const RETAKE_DEFAULT_LANG = 'pt-BR'
+// A build can start in another language with VITE_DEFAULT_LANG (the iOS UI tests build in English,
+// because they find buttons by their English labels).
+export const RETAKE_DEFAULT_LANG = matchLocale(import.meta.env?.VITE_DEFAULT_LANG) || 'pt-BR'
 
 /** A language tag ('pt-BR', 'pt_br', 'de-AT', 'en-US') as one of LANGS' keys, or null. */
 export function matchLocale(tag) {

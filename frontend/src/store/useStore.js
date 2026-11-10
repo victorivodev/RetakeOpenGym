@@ -5,7 +5,7 @@ import { t } from '../lib/i18n.js'
 import { registerCustom, healCustomEx } from '../lib/exercises.js'
 import { syncGymInventory } from '../lib/gym-inventory.js'
 import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
-import { rememberDefaultLang } from '../lib/default-lang.js'
+import { rememberDefaultLang, RETAKE_DEFAULT_LANG } from '../lib/default-lang.js'
 import { guestAllowed } from '../lib/guest.js'
 import { stateJson } from '../lib/state-json.js'
 import { MOBILE, initReminderSync, nativeLoad, nativeSave, onAppActive, readJsonFile, syncReminder, writeAutoBackup, writeJsonFile } from '../lib/mobile.js'
@@ -324,7 +324,7 @@ const detectedLang = () => {
     if (RTL_LANGS.has(base)) return base
   } catch (e) { /* ignore */ }
   // Retake Gym starts in Brazilian Portuguese (lib/default-lang.js RETAKE_DEFAULT_LANG).
-  return 'pt-BR'
+  return RETAKE_DEFAULT_LANG
 }
 
 // A copy started from nothing on this device. `langAuto` marks its language as one nobody has
