@@ -1,25 +1,39 @@
 /* Retake Gym — AI meal analysis.
  *
- * A meal comes in as a photo, a description, or both; Claude returns the foods it sees with
+ * A meal comes in as a photo, a description, or both; the model returns the foods it sees with
  * a portion in grams and the energy and macros of that portion. The app shows the result for
  * review before anything is saved (frontend/src/views/MealLog.jsx), so this module never
  * writes to the user's state.
  *
  * Configuration (environment):
- *   ANTHROPIC_API_KEY   the key the analysis is billed to; without it the feature is off
- *   MEAL_AI_MODEL       optional, defaults to claude-opus-5-5
+ *   GEMINI_API_KEY      Google Gemini key: the default provider when it is set
+ *   ANTHROPIC_API_KEY   Claude key: used when there is no Gemini key (or MEAL_AI_PROVIDER=anthropic)
+ *   MEAL_AI_PROVIDER    optional, 'gemini' or 'anthropic' to pick one when both keys are set
+ *   MEAL_AI_MODEL       optional, the model name (defaults below, per provider)
  *   MEAL_AI_DAILY_CAP   optional, analyses per user per day (default 40)
+ * Without any key the feature is off.
  *
- * The photo is passed through to the API and not stored anywhere on this server.
+ * The photo is passed through to the provider and not stored anywhere on this server.
  */
 import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenAI } from '@google/genai';
 
-export const DEFAULT_MODEL = 'claude-opus-5-5';
+export const DEFAULT_MODELS = { gemini: 'gemini-3.8-flash', anthropic: 'claude-opus-5-5' };
 export const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 export const MAX_TEXT = 1000;
 const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
-export const isEnabled = (env = process.env) => !!(env.ANTHROPIC_API_KEY && env.ANTHROPIC_API_KEY.trim());
+const has = v => typeof v === 'string' && !!v.trim();
+/** 'gemini', 'anthropic', or null when no key is configured. */
+export function providerOf(env = process.env) {
+  const want = (env.MEAL_AI_PROVIDER || '').trim().toLowerCase();
+  if (want === 'gemini' && has(env.GEMINI_API_KEY)) return 'gemini';
+  if (want === 'anthropic' && has(env.ANTHROPIC_API_KEY)) return 'anthropic';
+  if (has(env.GEMINI_API_KEY)) return 'gemini';
+  if (has(env.ANTHROPIC_API_KEY)) return 'anthropic';
+  return null;
+}
+export const isEnabled = (env = process.env) => providerOf(env) !== null;
 
 // What Claude must return. Kept flat and small so it is cheap to generate and easy to validate.
 export const MEAL_SCHEMA = {
@@ -106,19 +120,25 @@ export function normalize(out) {
   };
 }
 
-let client = null;
-const getClient = () => (client ||= new Anthropic());
+const failed = e => (e?.status === 429
+  ? { ok: false, status: 429, error: 'the meal AI is busy, try again in a minute' }
+  : { ok: false, status: 502, error: 'the meal AI could not be reached' });
 
-/**
- * Runs one analysis. Resolves to { ok: true, meal } or { ok: false, status, error }.
- * `create` is injectable for tests.
- */
-export async function analyzeMeal(req, { env = process.env, create } = {}) {
-  const call = create || (params => getClient().beta.messages.create(params));
+const parsedMeal = text => {
+  try { return { ok: true, meal: normalize(JSON.parse(text)) }; }
+  catch { return { ok: false, status: 502, error: 'the meal AI answered in an unexpected format' }; }
+};
+
+let anthropicClient = null;
+let geminiClient = null;
+
+/** Claude, with structured outputs. `create` is injectable for tests. */
+async function viaAnthropic(req, env, create) {
+  const call = create || (params => (anthropicClient ||= new Anthropic()).beta.messages.create(params));
   let res;
   try {
     res = await call({
-      model: (env.MEAL_AI_MODEL || '').trim() || DEFAULT_MODEL,
+      model: (env.MEAL_AI_MODEL || '').trim() || DEFAULT_MODELS.anthropic,
       max_tokens: 4000,
       system: SYSTEM_PROMPT,
       messages: buildMessages(req),
@@ -127,16 +147,47 @@ export async function analyzeMeal(req, { env = process.env, create } = {}) {
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default'
     });
-  } catch (e) {
-    const status = e?.status === 429 ? 429 : 502;
-    return { ok: false, status, error: status === 429 ? 'the meal AI is busy, try again in a minute' : 'the meal AI could not be reached' };
-  }
+  } catch (e) { return failed(e); }
   if (res?.stop_reason === 'refusal') return { ok: false, status: 422, error: 'the meal AI could not analyse this input' };
   if (res?.stop_reason === 'max_tokens') return { ok: false, status: 502, error: 'the meal AI answer was cut off' };
-  const text = (res?.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
-  let parsed;
-  try { parsed = JSON.parse(text); } catch { return { ok: false, status: 502, error: 'the meal AI answered in an unexpected format' }; }
-  return { ok: true, meal: normalize(parsed) };
+  return parsedMeal((res?.content || []).filter(b => b.type === 'text').map(b => b.text).join(''));
+}
+
+/** Gemini, with a JSON response schema. `create` is injectable for tests. */
+async function viaGemini(req, env, create) {
+  const call = create || (params => (geminiClient ||= new GoogleGenAI({ apiKey: env.GEMINI_API_KEY.trim() })).models.generateContent(params));
+  const parts = [];
+  if (req.image) parts.push({ inlineData: { mimeType: req.image.mediaType, data: req.image.data } });
+  parts.push({ text: buildMessages({ ...req, image: null })[0].content[0].text });
+  let res;
+  try {
+    res = await call({
+      model: (env.MEAL_AI_MODEL || '').trim() || DEFAULT_MODELS.gemini,
+      contents: [{ role: 'user', parts }],
+      config: {
+        systemInstruction: SYSTEM_PROMPT,
+        responseMimeType: 'application/json',
+        responseJsonSchema: MEAL_SCHEMA,
+        maxOutputTokens: 4000
+      }
+    });
+  } catch (e) { return failed(e); }
+  const reason = res?.candidates?.[0]?.finishReason;
+  if (res?.promptFeedback?.blockReason || reason === 'SAFETY' || reason === 'PROHIBITED_CONTENT') {
+    return { ok: false, status: 422, error: 'the meal AI could not analyse this input' };
+  }
+  if (reason === 'MAX_TOKENS') return { ok: false, status: 502, error: 'the meal AI answer was cut off' };
+  return parsedMeal(res?.text || '');
+}
+
+/**
+ * Runs one analysis with the configured provider. Resolves to { ok: true, meal } or
+ * { ok: false, status, error }. `provider` and `create` are injectable for tests.
+ */
+export async function analyzeMeal(req, { env = process.env, provider = providerOf(env), create } = {}) {
+  if (provider === 'gemini') return viaGemini(req, env, create);
+  if (provider === 'anthropic') return viaAnthropic(req, env, create);
+  return { ok: false, status: 503, error: 'meal AI is not set up on this server' };
 }
 
 /* ---------- per-user daily cap ---------- */

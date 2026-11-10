@@ -166,8 +166,8 @@ tags:
     description: Live-workout presence heartbeat
   - name: meals
     description: >-
-      Retake Gym's AI meal logging. Every route here answers 503 `off` while the server has no
-      `ANTHROPIC_API_KEY`.
+      Retake Gym's AI meal logging, with Google Gemini (`GEMINI_API_KEY`) or Claude
+      (`ANTHROPIC_API_KEY`). Every route here answers 503 `off` while the server has neither.
   - name: admin
     description: Admin dashboard. Requires an admin session (`ADMIN_UIDS` or `admin:true`)
   - name: media
@@ -3350,7 +3350,7 @@ paths:
       operationId: postMealsAnalyze
       summary: Estimate the foods and macros of a meal
       description: |
-        Sends a photo of a meal and/or a short description to Claude and answers with the foods
+        Sends a photo of a meal and/or a short description to the configured model (Gemini or Claude) and answers with the foods
         it sees, an estimated portion of each and that portion's energy and macros. Nothing is
         stored: the app shows the answer for review and saves the meal in the user's state.
         Limited per user per day (`MEAL_AI_DAILY_CAP`, default 40).

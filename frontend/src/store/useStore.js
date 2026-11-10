@@ -323,7 +323,8 @@ const detectedLang = () => {
     const base = (navigator.language || '').toLowerCase().split('-')[0]
     if (RTL_LANGS.has(base)) return base
   } catch (e) { /* ignore */ }
-  return 'en'
+  // Retake Gym starts in Brazilian Portuguese (lib/default-lang.js RETAKE_DEFAULT_LANG).
+  return 'pt-BR'
 }
 
 // A copy started from nothing on this device. `langAuto` marks its language as one nobody has

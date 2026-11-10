@@ -3007,7 +3007,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
 
 <section class="api-sec" id="meals">
   <h2>Meals</h2>
-  <p class="sub">Retake Gym's AI meal logging. Every route here answers 503 <code>off</code> while the server has no <code>ANTHROPIC_API_KEY</code>.</p>
+  <p class="sub">Retake Gym's AI meal logging, with Google Gemini (<code>GEMINI_API_KEY</code>) or Claude (<code>ANTHROPIC_API_KEY</code>). Every route here answers 503 <code>off</code> while the server has neither.</p>
   <div class="eps">
 
 <details class="ep" id="op-postMealsAnalyze">
@@ -3018,7 +3018,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="ep-sum">Estimate the foods and macros of a meal</span>
   </summary>
   <div class="ep-body">
-<p>Sends a photo of a meal and/or a short description to Claude and answers with the foods it sees, an estimated portion of each and that portion's energy and macros. Nothing is stored: the app shows the answer for review and saves the meal in the user's state. Limited per user per day (<code>MEAL_AI_DAILY_CAP</code>, default 40).</p>
+<p>Sends a photo of a meal and/or a short description to the configured model (Gemini or Claude) and answers with the foods it sees, an estimated portion of each and that portion's energy and macros. Nothing is stored: the app shows the answer for review and saves the meal in the user's state. Limited per user per day (<code>MEAL_AI_DAILY_CAP</code>, default 40).</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
 
 <p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">

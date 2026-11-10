@@ -2114,7 +2114,7 @@ const routes = {
       // block is how the app knows this server does not take photos and videos at all.
       ...(MEDIA_ON ? { media: mediaConfig(MEDIA_LIMITS) } : {}),
       ...(readSession(req) ? { coach: coachConfig.publicConfig() } : {}),
-      // Retake Gym: whether this server analyses meal photos and descriptions (ANTHROPIC_API_KEY set).
+      // Retake Gym: whether this server analyses meal photos and descriptions (GEMINI_API_KEY or ANTHROPIC_API_KEY set).
       ...(readSession(req) && mealAI.isEnabled() ? { meal_ai: true } : {}),
       // Which integrations this server offers (only to a session, like the Coach block). Absent
       // with INTEGRATIONS unset, which is how the app knows to show the server cards as off.

@@ -201,6 +201,8 @@ export function buildDemoState() {
     // The history is rated, so the demo turns the column on and the stats get a scale to
     // label their aggregates with instead of guessing one (see displayScale).
     effort: 'rir',
+    // Retake Gym: the demo starts in Brazilian Portuguese, like a fresh profile.
+    lang: 'pt-BR',
     diet: { sex: 'male', heightCm: 178, birthYear: 1993, activity: 'moderate', goal: 'lose', ratePerWeekKg: 0.5 },
     meals, water: { [tIso]: { ml: 1250, _ts: nowMs } }
   }
