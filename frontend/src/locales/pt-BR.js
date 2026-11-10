@@ -2504,6 +2504,13 @@ export const PT_BR_OVERRIDES = {
   "{0} kcal left": "faltam {0} kcal",
   "{0} kcal over": "{0} kcal acima",
   "{0} kg per week": "{0} kg por semana",
+  "You reached today’s limit of AI meal analyses. Add the food by hand.": "Você atingiu o limite de análises com IA de hoje. Adicione os alimentos manualmente.",
+  "The meal AI is not set up on this server.": "A IA de refeições não está configurada neste servidor.",
+  "Send a photo or a short description of the meal.": "Envie uma foto ou uma descrição curta da refeição.",
+  "The meal AI is busy right now. Try again in a minute.": "A IA de refeições está ocupada agora. Tente de novo em um minuto.",
+  "The AI could not analyse this. Try another photo or describe the meal.": "A IA não conseguiu analisar isso. Tente outra foto ou descreva a refeição.",
+  "That photo is too large.": "Essa foto é grande demais.",
+  "The meal AI could not be reached. Try again or add the food by hand.": "Não foi possível falar com a IA de refeições. Tente de novo ou adicione os alimentos manualmente.",
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES }

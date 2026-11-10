@@ -97,10 +97,16 @@ test('a busy Gemini model falls through to the next one', async () => {
     if (tried.length === 1) throw Object.assign(new Error('high demand'), { status: 503 });
     return { candidates: [{ finishReason: 'STOP' }], text: JSON.stringify({ title: 'x', notes: '', items: [{ name: 'Ovo', grams: 50, kcal: 70, protein: 6, carbs: 0, fat: 5, fiber: 0, confidence: 0.9 }] }) };
   };
-  const r = await analyzeMeal(parseRequest({ text: 'ovo' }), { env: {}, provider: 'gemini', create });
+  const list = async () => ['gemini-3.6-flash', DEFAULT_MODELS.gemini];
+  const r = await analyzeMeal(parseRequest({ text: 'ovo' }), { env: {}, provider: 'gemini', create, list });
   assert.ok(r.ok);
-  assert.equal(tried[0], DEFAULT_MODELS.gemini);
-  assert.equal(tried.length, 2);
-  const all = await analyzeMeal(parseRequest({ text: 'ovo' }), { env: {}, provider: 'gemini', create: async () => { throw Object.assign(new Error('busy'), { status: 503 }); } });
+  assert.deepEqual(tried, [DEFAULT_MODELS.gemini, 'gemini-3.6-flash']);
+  const all = await analyzeMeal(parseRequest({ text: 'ovo' }), { env: {}, provider: 'gemini', list, create: async () => { throw Object.assign(new Error('busy'), { status: 503 }); } });
   assert.equal(all.status, 429);
+});
+
+test('the fallback list is the key\'s Flash models, newest first, lite last', async () => {
+  const { pickFlashModels } = await import('../meals/analyze.js');
+  assert.deepEqual(pickFlashModels(['models/gemini-2.5-flash', 'models/gemini-3.6-flash', 'models/gemini-3.8-flash-tts', 'models/gemini-3.5-flash-lite', 'models/gemini-2.5-pro', 'models/gemini-3.10-flash']),
+    ['gemini-3.10-flash', 'gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-3.5-flash-lite']);
 });

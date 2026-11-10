@@ -19,8 +19,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenAI } from '@google/genai';
 
 export const DEFAULT_MODELS = { gemini: 'gemini-3.8-flash', anthropic: 'claude-opus-5-5' };
-// Tried in order after the configured Gemini model when it is overloaded or missing.
-export const GEMINI_FALLBACKS = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-flash-lite-latest'];
+// Used when the key's model list cannot be read: tried after the configured model.
+export const GEMINI_FALLBACKS = ['gemini-2.5-flash'];
 export const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 export const MAX_TEXT = 1000;
 const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
@@ -146,6 +146,32 @@ export function geminiBackendFor(env = process.env) {
   return 'gemini';
 }
 
+/**
+ * The Flash models this key can call, newest first (lite ones last), from the API's own list, so
+ * a busy or retired model falls back to one that exists today. Cached for an hour.
+ */
+export function pickFlashModels(names) {
+  const ver = n => n.match(/gemini-([\d.]+)-/)?.[1].split('.').map(Number) || [0];
+  const cmp = (a, b) => { const x = ver(a), y = ver(b); for (let i = 0; i < Math.max(x.length, y.length); i++) if ((y[i] || 0) !== (x[i] || 0)) return (y[i] || 0) - (x[i] || 0); return 0; };
+  const flash = names.map(n => n.replace(/^models\//, '')).filter(n => /^gemini-[\d.]+-flash(-lite)?$/.test(n));
+  return [...flash.filter(n => !n.endsWith('-lite')).sort(cmp), ...flash.filter(n => n.endsWith('-lite')).sort(cmp)];
+}
+let flashCache = null;
+async function geminiFlashModels(env) {
+  if (flashCache && Date.now() - flashCache.at < 3600e3) return flashCache.list;
+  const names = [];
+  try {
+    const apiKey = env.GEMINI_API_KEY.trim();
+    const c = geminiClients.gemini ||= new GoogleGenAI({ apiKey });
+    for await (const m of await c.models.list({ config: { pageSize: 200 } })) {
+      if (!m.supportedActions || m.supportedActions.includes('generateContent')) names.push(m.name);
+    }
+  } catch (e) { console.error('meal AI: could not list the Gemini models:', e?.status || '', String(e?.message || e).slice(0, 200)); }
+  const list = pickFlashModels(names);
+  flashCache = { at: Date.now(), list: list.length ? list : GEMINI_FALLBACKS };
+  return flashCache.list;
+}
+
 /** One generateContent call; an auth refusal from the guessed backend is retried on the other. */
 async function geminiCall(env, params) {
   const apiKey = env.GEMINI_API_KEY.trim();
@@ -188,15 +214,17 @@ async function viaAnthropic(req, env, create) {
 }
 
 /** Gemini, with a JSON response schema. `create` is injectable for tests. */
-async function viaGemini(req, env, create) {
+async function viaGemini(req, env, create, list) {
   const call = create || (params => geminiCall(env, params));
+  const more = list || (() => geminiFlashModels(env));
   const parts = [];
   if (req.image) parts.push({ inlineData: { mimeType: req.image.mediaType, data: req.image.data } });
   parts.push({ text: buildMessages({ ...req, image: null })[0].content[0].text });
   // A busy model (503 "high demand", 500, 429) is tried again on the next one in the list.
-  const models = [...new Set([(env.MEAL_AI_MODEL || '').trim() || DEFAULT_MODELS.gemini, ...GEMINI_FALLBACKS])];
-  let res, lastErr;
-  for (const model of models) {
+  const models = [(env.MEAL_AI_MODEL || '').trim() || DEFAULT_MODELS.gemini];
+  let res, lastErr, listed = false;
+  for (let i = 0; i < models.length && i < 6; i++) {
+    const model = models[i];
     try {
       res = await call({
         model,
@@ -214,7 +242,8 @@ async function viaGemini(req, env, create) {
       lastErr = e;
       const st = e?.status ?? e?.code;
       if (![429, 500, 503, 404].includes(st)) break;
-      console.error(`meal AI: ${model} answered ${st}, trying the next model`);
+      console.error(`meal AI: ${model} answered ${st}, trying another model`);
+      if (!listed) { listed = true; for (const m of await more()) if (!models.includes(m)) models.push(m); }
     }
   }
   if (lastErr) return failed(lastErr?.status === 503 ? Object.assign(lastErr, { status: 429 }) : lastErr);
@@ -231,8 +260,8 @@ async function viaGemini(req, env, create) {
  * Runs one analysis with the configured provider. Resolves to { ok: true, meal } or
  * { ok: false, status, error }. `provider` and `create` are injectable for tests.
  */
-export async function analyzeMeal(req, { env = process.env, provider = providerOf(env), create } = {}) {
-  if (provider === 'gemini') return viaGemini(req, env, create);
+export async function analyzeMeal(req, { env = process.env, provider = providerOf(env), create, list } = {}) {
+  if (provider === 'gemini') return viaGemini(req, env, create, list);
   if (provider === 'anthropic') return viaAnthropic(req, env, create);
   return { ok: false, status: 503, error: 'meal AI is not set up on this server' };
 }

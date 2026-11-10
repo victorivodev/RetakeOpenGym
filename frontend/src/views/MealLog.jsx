@@ -42,6 +42,18 @@ export function shrinkPhoto(file, max = 1024) {
   })
 }
 
+// What the server's refusal means for the person, in their language; never its raw JSON.
+export function mealAIError(e) {
+  const code = e?.data?.code
+  if (code === 'cap') return t('You reached today’s limit of AI meal analyses. Add the food by hand.')
+  if (code === 'off') return t('The meal AI is not set up on this server.')
+  if (code === 'invalid') return t('Send a photo or a short description of the meal.')
+  if (e?.status === 429) return t('The meal AI is busy right now. Try again in a minute.')
+  if (e?.status === 422) return t('The AI could not analyse this. Try another photo or describe the meal.')
+  if (e?.status === 413) return t('That photo is too large.')
+  return t('The meal AI could not be reached. Try again or add the food by hand.')
+}
+
 function ItemRow({ item, onChange, onRemove }) {
   const low = item.confidence != null && item.confidence < 0.5
   const field = (key, label, unit, tone) => <label className={'meal-num meal-num-' + tone}>
@@ -110,7 +122,7 @@ function MealLog({ meal, date, slot, close }) {
       setSource(photo ? 'ai-photo' : 'ai-text')
       setPhoto(null); setText('')
     } catch (e) {
-      toast(e?.message || t('The meal AI could not be reached'))
+      toast(mealAIError(e))
     } finally { setBusy(false) }
   }
 

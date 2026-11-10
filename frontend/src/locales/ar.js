@@ -3770,4 +3770,11 @@ export default {
   "{0} kcal left": "{0} kcal left",
   "{0} kcal over": "{0} kcal over",
   "{0} kg per week": "{0} kg per week",
+  "You reached today’s limit of AI meal analyses. Add the food by hand.": "You reached today’s limit of AI meal analyses. Add the food by hand.",
+  "The meal AI is not set up on this server.": "The meal AI is not set up on this server.",
+  "Send a photo or a short description of the meal.": "Send a photo or a short description of the meal.",
+  "The meal AI is busy right now. Try again in a minute.": "The meal AI is busy right now. Try again in a minute.",
+  "The AI could not analyse this. Try another photo or describe the meal.": "The AI could not analyse this. Try another photo or describe the meal.",
+  "That photo is too large.": "That photo is too large.",
+  "The meal AI could not be reached. Try again or add the food by hand.": "The meal AI could not be reached. Try again or add the food by hand.",
 }
