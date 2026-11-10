@@ -82,3 +82,10 @@ test('Gemini blocks and cut-offs become errors', async () => {
   assert.equal((await analyzeMeal(parseRequest({ text: 'x' }), { provider, create: async () => ({ candidates: [{ finishReason: 'MAX_TOKENS' }], text: '{' }) })).status, 502);
   assert.equal((await analyzeMeal(parseRequest({ text: 'x' }), { provider, create: async () => { throw Object.assign(new Error('q'), { status: 429 }); } })).status, 429);
 });
+
+test('a Google Cloud express key goes to Vertex, an AI Studio key to the Gemini API', async () => {
+  const { geminiBackendFor } = await import('../meals/analyze.js');
+  assert.equal(geminiBackendFor({ GEMINI_API_KEY: 'AIzaSyX' }), 'gemini');
+  assert.equal(geminiBackendFor({ GEMINI_API_KEY: ' AQ.Ab8RN6L_x' }), 'vertex');
+  assert.equal(geminiBackendFor({ GEMINI_API_KEY: 'AQ.x', GEMINI_BACKEND: 'gemini' }), 'gemini');
+});

@@ -130,7 +130,39 @@ const parsedMeal = text => {
 };
 
 let anthropicClient = null;
-let geminiClient = null;
+const geminiClients = {};
+let geminiBackend = null;   // the one that last answered: 'gemini' (AI Studio) or 'vertex'
+
+/**
+ * Which Google backend a key belongs to. AI Studio keys ("AIza…") call the Gemini API; Google
+ * Cloud / Vertex AI express-mode keys ("AQ.…") only work against Vertex AI. GEMINI_BACKEND
+ * (gemini | vertex) overrides the guess.
+ */
+export function geminiBackendFor(env = process.env) {
+  const want = (env.GEMINI_BACKEND || '').trim().toLowerCase();
+  if (want === 'vertex' || want === 'gemini') return want;
+  return /^AQ\./.test((env.GEMINI_API_KEY || '').trim()) ? 'vertex' : 'gemini';
+}
+
+/** One generateContent call; an auth refusal from the guessed backend is retried on the other. */
+async function geminiCall(env, params) {
+  const apiKey = env.GEMINI_API_KEY.trim();
+  const client = b => (geminiClients[b] ||= new GoogleGenAI(b === 'vertex' ? { vertexai: true, apiKey } : { apiKey }));
+  const first = geminiBackend || geminiBackendFor(env);
+  try {
+    const r = await client(first).models.generateContent(params);
+    geminiBackend = first;
+    return r;
+  } catch (e) {
+    const st = e?.status ?? e?.code;
+    if (env.GEMINI_BACKEND || ![400, 401, 403].includes(st)) throw e;
+    const other = first === 'vertex' ? 'gemini' : 'vertex';
+    console.error(`meal AI: ${first} refused the key (${st}), trying ${other}`);
+    const r = await client(other).models.generateContent(params);
+    geminiBackend = other;
+    return r;
+  }
+}
 
 /** Claude, with structured outputs. `create` is injectable for tests. */
 async function viaAnthropic(req, env, create) {
@@ -155,7 +187,7 @@ async function viaAnthropic(req, env, create) {
 
 /** Gemini, with a JSON response schema. `create` is injectable for tests. */
 async function viaGemini(req, env, create) {
-  const call = create || (params => (geminiClient ||= new GoogleGenAI({ apiKey: env.GEMINI_API_KEY.trim() })).models.generateContent(params));
+  const call = create || (params => geminiCall(env, params));
   const parts = [];
   if (req.image) parts.push({ inlineData: { mimeType: req.image.mediaType, data: req.image.data } });
   parts.push({ text: buildMessages({ ...req, image: null })[0].content[0].text });
