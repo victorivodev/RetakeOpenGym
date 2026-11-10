@@ -10,6 +10,7 @@ import { startNativeKeyboard } from './lib/native-keyboard.js'
 import './admin.css'
 import './coach.css'
 import './index.css'
+import './retake-brand.css'
 import { hideBoot, handOverFromLaunchScreen } from './lib/boot.js'
 import { guardFocusZoom } from './lib/viewport-zoom.js'
 

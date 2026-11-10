@@ -27,6 +27,9 @@ if (clipExt === '.webp' && !appDir) {
 const copyDir = (from, to, ext) => {
   fs.mkdirSync(to, { recursive: true })
   let n = 0
+  // Retake Gym ships without the Gym visual media (not licensed for forks): a missing folder
+  // stages nothing and the app falls back to the exercise text and the muscle map.
+  if (!fs.existsSync(from)) return n
   for (const f of fs.readdirSync(from)) {
     if (!f.endsWith(ext)) continue
     fs.copyFileSync(path.join(from, f), path.join(to, f))

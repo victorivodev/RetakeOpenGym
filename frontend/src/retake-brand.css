@@ -1,0 +1,52 @@
+/* ============================================================================
+   Retake Gym — Retake Tecnologia & Design brand layer
+   ----------------------------------------------------------------------------
+   Loaded after index.css. It only re-points the design tokens, so every
+   screen picks up the brand without per-component overrides:
+   - dark theme: Retake navy surfaces (#0c1324 / #151b2d / #191f31)
+   - accent: Retake gold #e8cc85 (preset "retake", the default), blue #89ceff
+     as the secondary/info colour
+   - type: Overpass (bundled, so it works offline in the apps)
+   ========================================================================== */
+@import '@fontsource-variable/overpass';
+
+:root {
+  --retake-navy: #0c1324;
+  --retake-gold: #e8cc85;
+  --retake-blue: #32658a;
+  --retake-sky:  #89ceff;
+
+  --bg:        #0c1324;
+  --bg-el:     #070d1f;
+  --surface:   #151b2d;
+  --surface-2: #191f31;
+  --surface-3: #2a3248;
+  --surface-raised: #1d2438;
+  --raised-line: rgba(220,225,251,.09);
+
+  --label:     #dce1fb;
+  --label-2:   rgba(220,225,251,.66);
+  --label-3:   rgba(220,225,251,.34);
+  --label-4:   rgba(220,225,251,.18);
+  --label-dim: rgba(220,225,251,.52);
+
+  --sep:       rgba(62,72,80,.70);
+  --sep-op:    rgba(62,72,80,.40);
+
+  --blue: #89ceff;
+  --yellow: #e8cc85;
+}
+
+:root[data-theme="light"] {
+  --bg:        #f4f6fb;
+  --bg-el:     #f8f9fd;
+  --surface:   #ffffff;
+  --surface-2: #eceff6;
+  --surface-3: #e1e5ef;
+  --label:     #0c1324;
+  --blue:      #32658a;
+}
+
+body {
+  font-family: 'Overpass Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+}

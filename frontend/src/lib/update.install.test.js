@@ -43,11 +43,11 @@ beforeEach(() => {
 })
 
 describe('downloadAndInstall (Android)', () => {
-  it('opens the installer only once openGym is back in front (lampi_: downloaded, never installed)', async () => {
+  it('opens the installer only once Retake Gym is back in front (lampi_: downloaded, never installed)', async () => {
     // The person switched apps while the APK came down: Android would block the installer.
     m.downloadFile = vi.fn(async () => { m.calls.push('download'); m.cached = true; m.active = false })
     let done = false
-    const run = downloadAndInstall('https://x/openGym-9.9.9.apk', HASH).then(() => { done = true })
+    const run = downloadAndInstall('https://x/Retake Gym-9.9.9.apk', HASH).then(() => { done = true })
     await vi.waitFor(() => expect(m.appListeners).toHaveLength(1))
     await tick(30)
     expect(m.calls).toEqual(['install', 'download'])   // the cache check, then the download
