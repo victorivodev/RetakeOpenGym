@@ -428,9 +428,34 @@ export async function passwordLogin(name, password) {
 }
 // `email` is optional, and sent only when there is one: a server from before the field would
 // otherwise ignore it without a word, which is the same thing.
-export async function passwordRegister(name, password, code, email) {
-  return (await post('/api/register/password', { name, password, code: code || '', ...(email ? { email } : {}) })).user
+export async function passwordRegister(name, password, code, email, username) {
+  return (await post('/api/register/password', { name, password, code: code || '', ...(email ? { email } : {}), ...(username ? { username } : {}) })).user
 }
+
+/* Retake Gym: the phone app signs in, up, or redeems a reset code with the e-mail (or user name)
+   and password straight against its server (/api/app/*), which answers with a token in the body,
+   the way pairRedeem's code does. `kind`: 'login' | 'register' | 'password-reset'. Like pairRedeem
+   it bootstraps the connection, so it talks to `serverBase` directly. */
+export async function appAuth(serverBase, kind, body, { probeMs = PROBE_MS } = {}) {
+  let data
+  try {
+    data = await request(serverBase + '/api/app/' + kind, {
+      method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, accessFor(serverBase)), body: JSON.stringify(body)
+    }, TIMEOUT_GET_MS)
+  } catch (e) {
+    // A server from before e-mail sign-in, or one that has it switched off.
+    if (e && e.status === 404) throw failure(t('This server does not take e-mail sign-in yet. Ask whoever runs it to update it.'), 'no-email-login', 404)
+    if (e && (e.status != null || e.code)) throw e
+    throw await whyUnreachable(serverBase, probeMs)
+  }
+  if (!data.token || !data.user) throw failure(t('The server answered with something other than Retake Gym data.'), 'bad-response', 200)
+  return data
+}
+
+// The profile's display name and user name, and its photo (Settings → Profile).
+export const updateProfile = body => post('/api/account/profile', body)
+export const setAvatar = avatar => post('/api/account/avatar', { avatar: avatar || null })
+export const getAvatar = id => api('/api/account/avatar' + (id ? '?id=' + encodeURIComponent(id) : ''))
 export async function passwordResetRedeem(name, code, next) {
   return (await post('/api/login/password-reset', { name, code, next })).user
 }

@@ -31,6 +31,10 @@ services:
       - PORT=3000
       - RESOLVER=127.0.0.11
       - MEDIA_UPLOAD_MAX=48m
+      # O endereço real de quem acessa, que o Caddy põe em X-Forwarded-For (ele ignora o que o
+      # visitante manda). Sem isso a API veria todo mundo com o IP do Caddy, e o limite de
+      # tentativas de login de um visitante pausaria o login de todos. ($$ = um $ literal.)
+      - CF_CONNECTING_IP=$$http_x_forwarded_for
 
   caddy:
     image: caddy:2.10-alpine

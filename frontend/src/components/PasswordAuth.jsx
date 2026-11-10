@@ -308,7 +308,7 @@ export function useAgainOnceReached(unreached, load) {
    which the sheet says before anyone taps. */
 // `version` changes when the profile's passkeys do (Settings, components/Passkeys.jsx): whether the
 // password may be removed depends on them, so the row asks again.
-export function PasswordRow({ version = 0 }) {
+export function PasswordRow({ version = 0, emailMode = false }) {
   const [st, setSt] = useState(null)   // GET /api/account/password
   const [unreached, setUnreached] = useState(false)
   const load = () => api('/api/account/password').then(r => { setSt(r); setUnreached(false) }).catch(e => setUnreached(notReached(e)))
@@ -319,6 +319,8 @@ export function PasswordRow({ version = 0 }) {
   if (!st.set && (!webauthnOK() || !st.passkeys)) return null
   const blocked = !st.set && st.nameTaken
   const subtitle = blocked ? t('Another profile already signs in with this name.')
+    // Retake Gym (EMAIL_LOGIN): nobody signs in with the display name.
+    : emailMode ? (st.set ? t('Set. Sign in with your e-mail or user name.') : t('Not set yet. Set one to sign in with your e-mail.'))
     : st.set ? t('Set · sign in as “{0}”', st.name)
     : t('Not set. Handy for signing in where passkeys don’t work.')
   return <>
@@ -326,7 +328,7 @@ export function PasswordRow({ version = 0 }) {
       onClick={blocked ? undefined : () => ui().openSheet(close => <PasswordSheet status={st} close={close} done={load} />)} />
     {/* The server only signs in by an address that belongs to a profile with a password, so
         without one the row is left out; one already saved stays reachable to change or remove. */}
-    {(st.set || st.email) && <EmailRow status={st} done={load} />}
+    {(st.set || st.email || emailMode) && <EmailRow status={st} done={load} emailMode={emailMode} />}
   </>
 }
 
@@ -415,8 +417,9 @@ function RemovePasswordSheet({ status, close, done }) {
    forgotten password is still reset by the admin's code. Setting, changing and removing it ask
    the proof a password does (ProveOwner): a copied session must not choose how the owner signs
    in. `status` is GET /api/account/password, whose `email` only the owner ever gets. */
-export function EmailRow({ status, done }) {
+export function EmailRow({ status, done, emailMode = false }) {
   const subtitle = status.email && !status.set ? t('“{0}” is saved, but signs in only once this profile has a password.', status.email)
+    : status.email && emailMode ? status.email
     : status.email ? t('Sign in with “{0}” instead of your name', status.email)
     : t('Not set. Lets you sign in with an e-mail instead of your name.')
   return <Row icon="envelope" iconTint="var(--blue)" title={t('Sign-in e-mail')} subtitle={subtitle} accessory="chevron"

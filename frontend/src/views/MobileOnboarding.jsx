@@ -12,6 +12,7 @@ import { askAddDeviceData } from '../sheets.jsx'
 import { normalizeServerUrl } from '../lib/remote.js'
 import { loadCfAccess, saveCfAccess } from '../lib/cf-access.js'
 import { useSheetKeyboard } from '../lib/use-sheet-keyboard.js'
+import { EmailAuth } from '../components/EmailAuth.jsx'
 
 // A plain http:// server works (#428), but whatever the app sends, the pairing code and then its
 // token, crosses the network readable. Said once under the field, not in the way: on a home
@@ -90,7 +91,20 @@ export function CfAccessSheet({ close, server = '' }) {
 // the address is already there and only the pairing code is left to type.
 const DEFAULT_SERVER = String(import.meta.env?.VITE_DEFAULT_SERVER || '').trim()
 
+// Retake Gym: with the server known, the sheet opens on e-mail sign-in; the pairing code is
+// one tap away for a server that does not offer it.
 export function ConnectSheet({ close, initialUrl = DEFAULT_SERVER, again = false }) {
+  const [account, setAccount] = useState(!!normalizeServerUrl(initialUrl))
+  if (account) return <div className="kb-lift">
+    <h3>{again ? t('Sign in again') : t('Sign in')}</h3>
+    {again && <div className="muted small" style={{ marginBottom: 14 }}>{t('What this phone kept is merged into your account.')}</div>}
+    <EmailAuth server={normalizeServerUrl(initialUrl)} onDone={() => { close(); useUI.getState().toast(t('Connected')) }} />
+    <Button variant="ghost" className="dim" onClick={() => setAccount(false)}>{t('Use a pairing code instead')}</Button>
+  </div>
+  return <PairCodeSheet close={close} initialUrl={initialUrl} again={again} />
+}
+
+export function PairCodeSheet({ close, initialUrl, again }) {
   const { connectToServer } = useStore()
   const [url, setUrl] = useState(initialUrl)
   const [code, setCode] = useState('')
@@ -149,6 +163,18 @@ export default function MobileOnboarding() {
     <h1 className="t-large" style={{ fontWeight: 700, margin: '10px 0 4px' }}>Retake Gym</h1>
   </>
   const wrap = { display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '78vh', textAlign: 'center' }
+  // Retake Gym: the build names its server, so the first screen is simply the sign-in.
+  const server = normalizeServerUrl(DEFAULT_SERVER)
+  if (server) return (
+    <div className="narrow" style={wrap}>
+      {head}
+      <div className="muted" style={{ marginBottom: 26 }}>{t('Your workouts. Your weights. Your profile.')}</div>
+      <EmailAuth server={server} />
+      <div style={{ height: 14 }} />
+      <Button variant="ghost" className="dim" onClick={() => useUI.getState().openSheet(close => <PairCodeSheet close={close} initialUrl={DEFAULT_SERVER} />)}>{t('Use a pairing code instead')}</Button>
+      <Button variant="ghost" className="dim" onClick={() => chooseLocalMode()}>{t('Use only on this phone, without an account')}</Button>
+    </div>
+  )
   return (
     <div className="narrow" style={wrap}>
       {head}

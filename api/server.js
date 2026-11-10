@@ -82,7 +82,15 @@ const ALLOW_GUEST = !/^(0|false|no|off)$/i.test(process.env.ALLOW_GUEST || '');
 // Name-and-password sign-in next to passkeys (#118). Off by default: it adds a second way into
 // every account that opts in, so an instance has to ask for it. While it is off every password
 // route answers 404 and the app shows none of it; hashes already stored stay where they are.
-const PASSWORD_LOGIN = /^(1|true|yes|on)$/i.test(process.env.PASSWORD_LOGIN || '');
+const PASSWORD_LOGIN_FLAG = /^(1|true|yes|on)$/i.test(process.env.PASSWORD_LOGIN || '');
+// Retake Gym: EMAIL_LOGIN makes the e-mail and a password THE way in (no passkey prompts, no
+// pairing code on the phone). It switches PASSWORD_LOGIN on with it and changes three things:
+// signing up asks for an e-mail and a unique user name (@handle), the profile name is only a
+// display name (no longer unique, no longer typed to sign in), and the app signs in with the
+// e-mail or the user name. The phone app signs in the same way through /api/app/* (token in the
+// body, no cookie). Passkeys made before keep working on the server; the app just stops offering them.
+const EMAIL_LOGIN = /^(1|true|yes|on)$/i.test(process.env.EMAIL_LOGIN || '');
+const PASSWORD_LOGIN = PASSWORD_LOGIN_FLAG || EMAIL_LOGIN;
 // The language the sign-in screen, and every profile that never picked one, starts in (#303) —
 // for an instance whose people share a language. Only a tag's shape is checked here; the app
 // matches it against the languages it has and ignores one it does not know. Unset, it is left
@@ -689,7 +697,14 @@ const clearCookie = COOKIE === LEGACY_COOKIE
 // any site sign a visitor into the attacker's account and collect what they log (login CSRF).
 // The watch relay's two routes for the watch are the same kind: the code in the body, or a watch
 // token in the Authorization header, which no browser attaches on its own.
-const CSRF_EXEMPT = new Set(['POST /api/pair/redeem', 'POST /api/watch/redeem', 'POST /api/watch/box']);
+//
+// Retake Gym: the phone app's e-mail sign-in (/api/app/login, /register, /password-reset) is
+// exempt for the same reason pair/redeem is. It answers with a token in the body and never sets a
+// cookie, so a hostile page that posts its own name and password gets a token it cannot read and
+// that the visitor's browser never uses: the login CSRF the cookie routes guard against needs the
+// cookie. The cookie routes stay checked.
+const CSRF_EXEMPT = new Set(['POST /api/pair/redeem', 'POST /api/watch/redeem', 'POST /api/watch/box',
+  'POST /api/app/login', 'POST /api/app/register', 'POST /api/app/password-reset']);
 // The routes that answer to the credential in the body and never to a Bearer. No Bearer is the
 // credential that acts there, so none buys the shortcut below: any valid token would do, the
 // attacker's own included.
@@ -701,7 +716,8 @@ const PASSKEY_ROUTES = new Set([
 // device code in the body is the credential, never a Bearer.
 const SIGN_IN_ROUTES = new Set([
   'POST /api/login/password', 'POST /api/register/password', 'POST /api/login/password-reset',
-  'POST /api/device-link/options', 'POST /api/device-link/verify'
+  'POST /api/device-link/options', 'POST /api/device-link/verify',
+  'POST /api/app/login', 'POST /api/app/register', 'POST /api/app/password-reset'
 ]);
 // A verify error as the answer's body: a passkey made at an address that is not ORIGIN/RP_ID gets
 // the same `code` as the origin check's 403, so the app explains both alike.
@@ -1045,6 +1061,9 @@ setInterval(() => { AUTH_BURST.sweep(); ADDR_FAILS.sweep(); ACCOUNT_FAILS.sweep(
 const THROTTLED = {
   'POST /api/login/password': 'password', 'POST /api/login/password-reset': 'password',
   'POST /api/register/password': 'signup',
+  'POST /api/app/login': 'password', 'POST /api/app/password-reset': 'password', 'POST /api/app/register': 'signup',
+  // Retake Gym: the profile (name, user name) and its photo only spend the budget.
+  'POST /api/account/profile': null, 'POST /api/account/avatar': null,
   'POST /api/account/password': 'password', 'DELETE /api/account/password': null,
   // Setting an e-mail only spends the budget and asks the address's e-mail pause; an address
   // already in use counts against it (see POST /api/account/email).
@@ -1137,13 +1156,34 @@ const hasPassword = u => !!(u && u.pw && typeof u.pw.h === 'string');
 // PASSWORD_LOGIN off, a password kept from when it was on neither signs in nor proves anything
 // (proveOwner), and does not keep a profile's last passkey in place.
 const passwordWayIn = u => PASSWORD_LOGIN && hasPassword(u);
-const passwordHolder = k => db.users.find(u => hasPassword(u) && nameKey(u.name) === k) || null;
-const holdsName = u => hasPassword(u) || !!(u.pwReset && u.pwReset.exp > Date.now());
+const passwordHolder = k => db.users.find(u => hasPassword(u) && (EMAIL_LOGIN ? u.username === k.replace(/^@/, '') : nameKey(u.name) === k)) || null;
+// With EMAIL_LOGIN the profile name is only what is shown: nobody signs in with it, so it holds
+// nothing and two profiles may share it. The user name (u.username) is the unique handle instead.
+const holdsName = u => !EMAIL_LOGIN && (hasPassword(u) || !!(u.pwReset && u.pwReset.exp > Date.now()));
 // An e-mail is a second name to sign in with (see "e-mail as a sign-in name" below), so a name
 // is also taken by another profile's e-mail — only ever relevant for a name with an "@" in it.
 const nameTaken = (name, exceptId) => {
   const k = nameKey(name);
   return db.users.some(u => u.id !== exceptId && ((holdsName(u) && nameKey(u.name) === k) || u.email === k));
+};
+
+/* ---------- user name (Retake Gym) ----------
+   A unique handle per profile, the one friends will find each other by: 3 to 20 characters,
+   lower-case letters, digits, "." and "_", never starting or ending with a dot. Stored folded
+   (u.username), shown with an "@". It has no "@" of its own, so it can never be read as an e-mail.
+   Optional for profiles from before; asked for at sign-up while EMAIL_LOGIN is on. */
+const USERNAME_RE = /^(?![.])(?!.*[.]$)(?!.*[.]{2})[a-z0-9._]{3,20}$/;
+const RESERVED_USERNAMES = new Set(['admin', 'root', 'retake', 'retakegym', 'suporte', 'support', 'api', 'null', 'undefined', 'me', 'opengym']);
+function normalizeUsername(raw) {
+  if (typeof raw !== 'string') return null;
+  const v = raw.normalize('NFKC').trim().toLowerCase().replace(/^@/, '');
+  return USERNAME_RE.test(v) ? v : null;
+}
+const usernameTaken = (un, exceptId) => RESERVED_USERNAMES.has(un) || db.users.some(u => u.id !== exceptId && u.username === un);
+const USERNAME_ERRORS = {
+  invalid: { error: 'a user name has 3 to 20 letters, digits, "." or "_"', code: 'username-invalid' },
+  taken: { error: 'another profile already has this user name', code: 'username-taken' },
+  missing: { error: 'a user name is required', code: 'username-missing' }
 };
 
 /* ---------- e-mail as a sign-in name ----------
@@ -1195,7 +1235,11 @@ function loginTarget(body) {
 }
 const acctKey = u => 'acct:' + u.id;
 const passkeyCount = u => db.creds.filter(c => c.userId === u.id).length;
-const publicUser = u => ({ id: u.id, name: u.name, admin: isAdmin(u), ...(isOwner(u) ? { owner: true } : {}) });
+const publicUser = u => ({
+  id: u.id, name: u.name, admin: isAdmin(u), ...(isOwner(u) ? { owner: true } : {}),
+  // Retake Gym: the handle and whether there is a photo (its version, so a cached one is replaced).
+  ...(u.username ? { username: u.username } : {}), ...(u.avatar ? { avatar: u.avatar } : {})
+});
 const POLICY_ERRORS = {
   'too-short': `the password needs at least ${MIN_LENGTH} characters`,
   'too-long': `the password can have at most ${MAX_LENGTH} characters`,
@@ -1350,6 +1394,7 @@ function removeAccount(u) {
   // The training history and any Coach credential of theirs, both outside db.json.
   try { fs.unlinkSync(stateFile(u.id)); } catch { /* already gone */ }
   try { fs.unlinkSync(watchFile(u.id)); } catch { /* never had a watch */ }
+  try { fs.unlinkSync(avatarFile(u.id)); } catch { /* never had a photo */ }
   try { coachConfig.clearProfileAuth(u.id); } catch { /* nothing stored */ }
   // Their photos and videos — the one place a profile's folder under uploads/ is removed.
   try { MEDIA.removeUser(u.id); } catch (e) { console.error('media: could not remove uploads of', u.id, e.message); }
@@ -1358,111 +1403,138 @@ function removeAccount(u) {
   saveDb();
 }
 
-const passwordRoutes = {
-  'POST /api/login/password': async (req, res) => {
-    const body = await readBody(req);
-    const target = loginTarget(body);
-    const pw = typeof body.password === 'string' ? body.password : '';
-    if (!target || !pw) return json(res, 400, { error: 'name and password required', code: 'missing' });
-    const check = passwordAttempt(req, res, target.key);
-    if (!check) return;
-    const { user } = target;
-    const rec = user?.pw;
-    if (!(await check.verify(pw, rec?.h))) {
-      check.failed(user, 'bad-password', target.email ? 'unknown-email' : 'unknown-name');
-      return json(res, 401, WRONG);
-    }
-    // Right for the password read before the await — which a change, an admin reset or a removal
-    // may have replaced since (each puts a new record in user.pw or none; only a rehash edits it
-    // in place). A session signed now would carry the account's *new* session version and outlive
-    // the "signed out everywhere" that came with it, so the old password gets nothing; it is not
-    // counted as a wrong one either.
-    const still = () => hasPassword(user) && user.pw === rec && target.resolve() === user;
-    if (!still()) {
-      check.void();
-      return json(res, 401, WRONG);
-    }
-    if (user.disabled) {
-      check.void();
-      audit(req, 'auth.password.fail', { ok: false, user, msg: 'account-disabled' });
-      return json(res, 403, { error: 'this account has been disabled', code: 'disabled' });
-    }
-    check.ok();
-    // A hash made with older parameters is replaced now, while the password is at hand.
-    if (needsRehash(rec.h)) {
-      try {
-        const h = await hashPassword(pw);
-        if (still()) { rec.h = h; saveDb(); }
-      } catch (e) { if (!(e instanceof BusyError)) throw e; }
-      // The same question again: the password may have changed while the new hash was made.
-      if (!still()) return json(res, 401, WRONG);
-    }
-    audit(req, 'auth.password.ok', { user });
-    json(res, 200, { user: publicUser(user) }, { 'Set-Cookie': sessionCookie(user) });
-  },
+// Signed in: a cookie for the browser, or — for the phone app (/api/app/*), whose WebView origin
+// is never ORIGIN and which keeps no cookie — the same session as a Bearer token in the body,
+// the way /api/pair/redeem hands one out.
+function signedInAnswer(res, user, asToken) {
+  if (asToken) return json(res, 200, { token: makeSession(user), user: publicUser(user) });
+  json(res, 200, { user: publicUser(user) }, { 'Set-Cookie': sessionCookie(user) });
+}
 
-  // For browsers that cannot make a passkey at all: plain http on a LAN address, some Firefox
-  // setups. Same invite rules as /api/register/*, checked again and burned after the hash.
-  'POST /api/register/password': async (req, res) => {
-    const body = await readBody(req);
-    const name = text(body.name).trim().slice(0, 40);
-    if (!name) return json(res, 400, { error: 'name required', code: 'missing' });
-    const code = text(body.code).trim().toUpperCase();
-    const invite = () => db.invites.find(i => i.code === code && !i.usedBy && !i.revoked);
-    if (inviteNeeded() && addressPaused(req, res, 'signup')) return;
-    if (inviteNeeded() && !invite()) {
-      audit(req, 'auth.register.denied', { ok: false, name, msg: 'invite-rejected' });
-      strikeAddress(req, 'signup');
-      return json(res, 403, { error: 'a valid invite code is required', code: 'invite' });
+async function passwordSignIn(req, res, asToken) {
+  const body = await readBody(req);
+  const target = loginTarget(body);
+  const pw = typeof body.password === 'string' ? body.password : '';
+  if (!target || !pw) return json(res, 400, { error: 'name and password required', code: 'missing' });
+  const check = passwordAttempt(req, res, target.key);
+  if (!check) return;
+  const { user } = target;
+  const rec = user?.pw;
+  if (!(await check.verify(pw, rec?.h))) {
+    check.failed(user, 'bad-password', target.email ? 'unknown-email' : 'unknown-name');
+    return json(res, 401, WRONG);
+  }
+  // Right for the password read before the await — which a change, an admin reset or a removal
+  // may have replaced since (each puts a new record in user.pw or none; only a rehash edits it
+  // in place). A session signed now would carry the account's *new* session version and outlive
+  // the "signed out everywhere" that came with it, so the old password gets nothing; it is not
+  // counted as a wrong one either.
+  const still = () => hasPassword(user) && user.pw === rec && target.resolve() === user;
+  if (!still()) {
+    check.void();
+    return json(res, 401, WRONG);
+  }
+  if (user.disabled) {
+    check.void();
+    audit(req, 'auth.password.fail', { ok: false, user, msg: 'account-disabled' });
+    return json(res, 403, { error: 'this account has been disabled', code: 'disabled' });
+  }
+  check.ok();
+  // A hash made with older parameters is replaced now, while the password is at hand.
+  if (needsRehash(rec.h)) {
+    try {
+      const h = await hashPassword(pw);
+      if (still()) { rec.h = h; saveDb(); }
+    } catch (e) { if (!(e instanceof BusyError)) throw e; }
+    // The same question again: the password may have changed while the new hash was made.
+    if (!still()) return json(res, 401, WRONG);
+  }
+  audit(req, 'auth.password.ok', { user, msg: asToken ? 'app' : null });
+  signedInAnswer(res, user, asToken);
+}
+
+// For browsers that cannot make a passkey at all: plain http on a LAN address, some Firefox
+// setups. Same invite rules as /api/register/*, checked again and burned after the hash.
+// With EMAIL_LOGIN, the e-mail and a user name are required and the name is only for display.
+async function passwordSignUp(req, res, asToken) {
+  const body = await readBody(req);
+  let username = null;
+  if (EMAIL_LOGIN) {
+    if (typeof body.email !== 'string' || !body.email.trim()) return json(res, 400, { error: 'e-mail required', code: 'email-missing' });
+    if (typeof body.username !== 'string' || !body.username.trim()) return json(res, 400, USERNAME_ERRORS.missing);
+    username = normalizeUsername(body.username);
+    if (!username) return json(res, 400, USERNAME_ERRORS.invalid);
+  }
+  const name = text(body.name).trim().slice(0, 40) || username || '';
+  if (!name) return json(res, 400, { error: 'name required', code: 'missing' });
+  const code = text(body.code).trim().toUpperCase();
+  const invite = () => db.invites.find(i => i.code === code && !i.usedBy && !i.revoked);
+  if (inviteNeeded() && addressPaused(req, res, 'signup')) return;
+  if (inviteNeeded() && !invite()) {
+    audit(req, 'auth.register.denied', { ok: false, name, msg: 'invite-rejected' });
+    strikeAddress(req, 'signup');
+    return json(res, 403, { error: 'a valid invite code is required', code: 'invite' });
+  }
+  const problem = passwordProblem(body.password, name);
+  if (problem) return policyError(res, problem);
+  const taken = () => json(res, 409, { error: 'another profile already signs in with this name', code: 'name-taken' });
+  // A name is also matched against every sign-in e-mail (nameTaken), so a name that is an
+  // address is the e-mail question asked through the name field: it waits for the hash below
+  // and counts against the address like the e-mail field does, or it would answer "in use" for
+  // any address at once and without limit.
+  const nameIsAddress = name.includes('@');
+  if (nameIsAddress && addressPaused(req, res, 'email')) return;
+  if (!nameIsAddress && nameTaken(name)) return taken();
+  // An e-mail is optional here. One already in use counts against the address, the way it
+  // does in Settings: this route needs no session, so it is the cheaper place to ask. Whether
+  // it is in use is only answered after the hash and the invite check that follows it, so on
+  // an invite-only instance nobody without a valid code learns anything about addresses.
+  const hasEmail = typeof body.email === 'string' && body.email.trim() !== '';
+  const email = hasEmail ? normalizeEmail(body.email) : null;
+  if (hasEmail && !email) return json(res, 400, EMAIL_ERRORS.invalid);
+  const emailRefused = () => {
+    strikeAddress(req, 'email');
+    audit(req, 'auth.register.fail', { ok: false, name, msg: 'email-taken' });
+    return json(res, 409, EMAIL_ERRORS.taken);
+  };
+  if (email && addressPaused(req, res, 'email')) return;
+  const usernameRefused = () => json(res, 409, USERNAME_ERRORS.taken);
+  if (username && usernameTaken(username)) return usernameRefused();
+  const h = await hashPassword(body.password);
+  let inv = null;
+  if (inviteNeeded()) {
+    inv = invite();
+    if (!inv) {
+      audit(req, 'auth.register.fail', { ok: false, name, msg: 'invite-invalid' });
+      return json(res, 403, { error: 'invite code is no longer valid, ask for a new one', code: 'invite' });
     }
-    const problem = passwordProblem(body.password, name);
-    if (problem) return policyError(res, problem);
-    const taken = () => json(res, 409, { error: 'another profile already signs in with this name', code: 'name-taken' });
-    // A name is also matched against every sign-in e-mail (nameTaken), so a name that is an
-    // address is the e-mail question asked through the name field: it waits for the hash below
-    // and counts against the address like the e-mail field does, or it would answer "in use" for
-    // any address at once and without limit.
-    const nameIsAddress = name.includes('@');
-    if (nameIsAddress && addressPaused(req, res, 'email')) return;
-    if (!nameIsAddress && nameTaken(name)) return taken();
-    // An e-mail is optional here. One already in use counts against the address, the way it
-    // does in Settings: this route needs no session, so it is the cheaper place to ask. Whether
-    // it is in use is only answered after the hash and the invite check that follows it, so on
-    // an invite-only instance nobody without a valid code learns anything about addresses.
-    const hasEmail = typeof body.email === 'string' && body.email.trim() !== '';
-    const email = hasEmail ? normalizeEmail(body.email) : null;
-    if (hasEmail && !email) return json(res, 400, EMAIL_ERRORS.invalid);
-    const emailRefused = () => {
-      strikeAddress(req, 'email');
-      audit(req, 'auth.register.fail', { ok: false, name, msg: 'email-taken' });
-      return json(res, 409, EMAIL_ERRORS.taken);
-    };
-    if (email && addressPaused(req, res, 'email')) return;
-    const h = await hashPassword(body.password);
-    let inv = null;
-    if (inviteNeeded()) {
-      inv = invite();
-      if (!inv) {
-        audit(req, 'auth.register.fail', { ok: false, name, msg: 'invite-invalid' });
-        return json(res, 403, { error: 'invite code is no longer valid, ask for a new one', code: 'invite' });
-      }
-    }
-    if (nameTaken(name)) {
-      // No name in the row: it is an address, and the log keeps none (maskEmail is for owners).
-      if (nameIsAddress) { strikeAddress(req, 'email'); audit(req, 'auth.register.fail', { ok: false, msg: 'email-taken' }); }
-      return taken();
-    }
-    // No await from here to the push: nothing can take the address between this check and it.
-    if (email && emailTaken(email)) return emailRefused();
-    const created = new Date().toISOString();
-    const user = { id: crypto.randomBytes(12).toString('base64url'), name, created, pw: { h, set: created }, ...(email ? { email } : {}) };
-    if (inv) { user.invitedBy = inv.code; inv.usedBy = user.id; inv.usedAt = created; }
-    claimFirstAdmin(req, user);
-    db.users.push(user);
-    saveDb();
-    audit(req, 'auth.register.ok', { user, msg: inv ? inv.code + ' · password' : 'password' });
-    json(res, 200, { user: publicUser(user) }, { 'Set-Cookie': sessionCookie(user) });
-  },
+  }
+  if (nameTaken(name)) {
+    // No name in the row: it is an address, and the log keeps none (maskEmail is for owners).
+    if (nameIsAddress) { strikeAddress(req, 'email'); audit(req, 'auth.register.fail', { ok: false, msg: 'email-taken' }); }
+    return taken();
+  }
+  // No await from here to the push: nothing can take the address between this check and it.
+  if (email && emailTaken(email)) return emailRefused();
+  if (username && usernameTaken(username)) return usernameRefused();
+  const created = new Date().toISOString();
+  const user = { id: crypto.randomBytes(12).toString('base64url'), name, created, pw: { h, set: created }, ...(email ? { email } : {}), ...(username ? { username } : {}) };
+  if (inv) { user.invitedBy = inv.code; inv.usedBy = user.id; inv.usedAt = created; }
+  claimFirstAdmin(req, user);
+  db.users.push(user);
+  saveDb();
+  audit(req, 'auth.register.ok', { user, msg: (inv ? inv.code + ' · password' : 'password') + (asToken ? ' · app' : '') });
+  signedInAnswer(res, user, asToken);
+}
+
+const passwordRoutes = {
+  'POST /api/login/password': (req, res) => passwordSignIn(req, res, false),
+  'POST /api/register/password': (req, res) => passwordSignUp(req, res, false),
+  // The phone app's way in (Retake Gym): the same checks, answered with a token.
+  'POST /api/app/login': (req, res) => passwordSignIn(req, res, true),
+  'POST /api/app/register': (req, res) => passwordSignUp(req, res, true),
+  'POST /api/app/password-reset': (req, res) => passwordResetRedeem(req, res, true),
+  'POST /api/login/password-reset': (req, res) => passwordResetRedeem(req, res, false),
 
   // What Settings shows: whether a password is set, and whether it could be removed.
   'GET /api/account/password': async (req, res) => {
@@ -1599,44 +1671,130 @@ const passwordRoutes = {
     saveDb();
     audit(req, 'admin.password.reset', { user: admin, target: u });
     json(res, 200, { ok: true, name: u.name, code, expires: u.pwReset.exp });
+  }
+};
+
+async function passwordResetRedeem(req, res, asToken) {
+  const body = await readBody(req);
+  // The name or the e-mail, in the same fields sign-in takes them (loginTarget).
+  const k = nameKey(text(body.identifier ?? body.name ?? body.email).slice(0, 300));
+  const code = text(body.code).slice(0, 64);
+  if (!k || !code) return json(res, 400, { error: 'name and code required', code: 'missing' });
+  // Wrong codes count against the address only. A per-name pause would add nothing against a
+  // 60-bit code that lives a day, and would let anyone who knows the name keep the real code
+  // refused for that whole day — after the reset has already removed the old password.
+  if (addressPaused(req, res, 'password')) return;
+  const find = () => db.users.find(u => u.pwReset && (nameKey(u.name) === k || u.email === k || (!!u.username && u.username === k.replace(/^@/, ''))) && resetCodeMatches(code, u.pwReset)) || null;
+  const user = find();
+  const invalid = () => json(res, 400, { error: 'that reset code is wrong or has expired', code: 'reset-invalid' });
+  const taken = () => json(res, 409, { error: 'another profile already signs in with this name', code: 'name-taken' });
+  if (!user) {
+    strikeAddress(req, 'password');
+    audit(req, 'auth.password.reset', { ok: false, msg: 'reset-invalid' });
+    return invalid();
+  }
+  if (user.disabled) {
+    audit(req, 'auth.password.reset', { ok: false, user, msg: 'account-disabled' });
+    return json(res, 403, { error: 'this account has been disabled', code: 'disabled' });
+  }
+  // The code is good and stays good until a password is actually set with it.
+  const problem = passwordProblem(body.next, user.name);
+  if (problem) return policyError(res, problem);
+  if (nameTaken(user.name, user.id)) return taken();
+  const h = await hashPassword(body.next);
+  // Single use: a second request that raced this one through the hash finds the code gone.
+  if (find() !== user) return invalid();
+  if (nameTaken(user.name, user.id)) return taken();
+  setPassword(user, h);
+  ACCOUNT_FAILS.clear(acctKey(user));
+  saveDb();
+  audit(req, 'auth.password.reset', { user });
+  signedInAnswer(res, user, asToken);
+}
+
+/* ---------- the profile: display name, user name and photo (Retake Gym) ----------
+   What friends will see of each other. The photo is a small picture the app has already cut to a
+   square and shrunk (a data: URL, JPEG/PNG/WebP, at most AVATAR_MAX characters), kept as one file
+   per profile in DATA_DIR/avatars, never in db.json, which is written whole on every change. The
+   user record only carries its version (u.avatar), so publicUser() can say there is one and a
+   cached copy can tell it is stale. Any signed-in profile may read any photo by id (the friends
+   list will need that); nobody signed out can. */
+const AVATAR_DIR = path.join(DATA, 'avatars');
+const AVATAR_MAX = 400 * 1024;
+const AVATAR_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/;
+const avatarFile = uid => path.join(AVATAR_DIR, uid.replace(/[^a-zA-Z0-9_-]/g, '') + '.txt');
+const readAvatar = u => { if (!u?.avatar) return null; try { return fs.readFileSync(avatarFile(u.id), 'utf8'); } catch { return null; } };
+const profileAnswer = u => ({ ok: true, user: publicUser(u) });
+
+const profileRoutes = {
+  // Change the display name and/or the user name. A user name is a way to type an account at the
+  // sign-in screen, never a way in by itself (the password still is), so a session is all this asks.
+  'POST /api/account/profile': async (req, res) => {
+    const user = readSession(req);
+    if (!user) return json(res, 401, { error: 'not signed in' });
+    const body = await readBody(req);
+    let name = user.name;
+    if (body.name !== undefined) {
+      name = text(body.name).trim().slice(0, 40);
+      if (!name) return json(res, 400, { error: 'name required', code: 'missing' });
+      // Where names still sign in (no EMAIL_LOGIN), two password profiles may not share one.
+      if (nameKey(name) !== nameKey(user.name) && nameTaken(name, user.id)) return json(res, 409, { error: 'another profile already signs in with this name', code: 'name-taken' });
+    }
+    let username = user.username || null;
+    if (body.username !== undefined) {
+      const raw = typeof body.username === 'string' ? body.username.trim() : '';
+      if (!raw) {
+        // A profile that signs in with its user name keeps one.
+        if (EMAIL_LOGIN) return json(res, 400, USERNAME_ERRORS.missing);
+        username = null;
+      } else {
+        username = normalizeUsername(raw);
+        if (!username) return json(res, 400, USERNAME_ERRORS.invalid);
+        if (username !== user.username && usernameTaken(username, user.id)) return json(res, 409, USERNAME_ERRORS.taken);
+      }
+    }
+    const changed = name !== user.name || username !== (user.username || null);
+    if (changed) {
+      user.name = name;
+      if (username) user.username = username; else delete user.username;
+      saveDb();
+      audit(req, 'account.profile', { user, msg: username ? '@' + username : null });
+    }
+    json(res, 200, profileAnswer(user));
   },
 
-  'POST /api/login/password-reset': async (req, res) => {
+  // Set (`avatar`: a data: URL) or remove (`avatar`: null or '') this profile's photo.
+  'POST /api/account/avatar': async (req, res) => {
+    const user = readSession(req);
+    if (!user) return json(res, 401, { error: 'not signed in' });
     const body = await readBody(req);
-    // The name or the e-mail, in the same fields sign-in takes them (loginTarget).
-    const k = nameKey(text(body.identifier ?? body.name ?? body.email).slice(0, 300));
-    const code = text(body.code).slice(0, 64);
-    if (!k || !code) return json(res, 400, { error: 'name and code required', code: 'missing' });
-    // Wrong codes count against the address only. A per-name pause would add nothing against a
-    // 60-bit code that lives a day, and would let anyone who knows the name keep the real code
-    // refused for that whole day — after the reset has already removed the old password.
-    if (addressPaused(req, res, 'password')) return;
-    const find = () => db.users.find(u => u.pwReset && (nameKey(u.name) === k || u.email === k) && resetCodeMatches(code, u.pwReset)) || null;
-    const user = find();
-    const invalid = () => json(res, 400, { error: 'that reset code is wrong or has expired', code: 'reset-invalid' });
-    const taken = () => json(res, 409, { error: 'another profile already signs in with this name', code: 'name-taken' });
-    if (!user) {
-      strikeAddress(req, 'password');
-      audit(req, 'auth.password.reset', { ok: false, msg: 'reset-invalid' });
-      return invalid();
+    const v = body.avatar;
+    if (v == null || v === '') {
+      if (user.avatar) {
+        try { fs.unlinkSync(avatarFile(user.id)); } catch { /* already gone */ }
+        delete user.avatar;
+        saveDb();
+      }
+      return json(res, 200, profileAnswer(user));
     }
-    if (user.disabled) {
-      audit(req, 'auth.password.reset', { ok: false, user, msg: 'account-disabled' });
-      return json(res, 403, { error: 'this account has been disabled', code: 'disabled' });
+    if (typeof v !== 'string' || v.length > AVATAR_MAX || !AVATAR_RE.test(v)) {
+      return json(res, 400, { error: 'the photo has to be a small JPEG, PNG or WebP picture', code: 'avatar-invalid' });
     }
-    // The code is good and stays good until a password is actually set with it.
-    const problem = passwordProblem(body.next, user.name);
-    if (problem) return policyError(res, problem);
-    if (nameTaken(user.name, user.id)) return taken();
-    const h = await hashPassword(body.next);
-    // Single use: a second request that raced this one through the hash finds the code gone.
-    if (find() !== user) return invalid();
-    if (nameTaken(user.name, user.id)) return taken();
-    setPassword(user, h);
-    ACCOUNT_FAILS.clear(acctKey(user));
+    fs.mkdirSync(AVATAR_DIR, { recursive: true, mode: 0o700 });
+    durableWrite(avatarFile(user.id), v, 0o600);
+    user.avatar = Date.now().toString(36);
     saveDb();
-    audit(req, 'auth.password.reset', { user });
-    json(res, 200, { user: publicUser(user) }, { 'Set-Cookie': sessionCookie(user) });
+    json(res, 200, profileAnswer(user));
+  },
+
+  // A profile's photo by id (`?id=`, the caller's own without one), for any signed-in caller.
+  'GET /api/account/avatar': async (req, res) => {
+    const me = readSession(req);
+    if (!me) return json(res, 401, { error: 'not signed in' });
+    const id = new URL(req.url, 'http://x').searchParams.get('id') || me.id;
+    const u = db.users.find(x => x.id === id);
+    if (!u || u.disabled) return json(res, 404, { error: 'no such profile' });
+    json(res, 200, { id: u.id, version: u.avatar || null, avatar: readAvatar(u) });
   }
 };
 
@@ -2111,6 +2269,8 @@ const routes = {
       invite_only: inviteNeeded(), allow_guest: ALLOW_GUEST,
       // Only when on, so an instance without passwords answers exactly as it did before (#118).
       ...(PASSWORD_LOGIN ? { password_login: true } : {}),
+      // Retake Gym: sign-in and sign-up with e-mail and password only (EMAIL_LOGIN).
+      ...(EMAIL_LOGIN ? { email_login: true } : {}),
       // Public: the sign-in screen is the first thing that reads it.
       ...(DEFAULT_LANG ? { default_lang: DEFAULT_LANG } : {}),
       // Public like the two flags above: the caps are not a secret, and the absence of the
@@ -2478,6 +2638,7 @@ const routes = {
 
   // Absent entirely while PASSWORD_LOGIN is off, so each of them is a plain 404.
   ...(PASSWORD_LOGIN ? passwordRoutes : {}),
+  ...profileRoutes,
 
   // Always there: more passkeys and device links need nothing an instance has to switch on.
   ...passkeyRoutes,
@@ -3150,20 +3311,51 @@ server.headersTimeout = 60000;
 // no other way to learn it.
 server.listen(PORT, () => console.log(`gym-api on :${server.address().port} (rpID=${RP_ID}, origin=${ORIGIN}, meal AI: ${mealAI.providerOf() || "off"})`));
 
+// Retake Gym (set-login.js): the server's own way to give a profile its e-mail, user name and
+// password — how a profile made with a passkey moves to e-mail sign-in without one, and how the
+// owner, whom no admin can reset, gets a forgotten password replaced. Same rules as the app:
+// unique e-mail and user name, the password policy. A new password signs the profile out
+// everywhere (setPassword), as it does from Settings.
+async function setLoginFromServer(u, msg, row) {
+  const email = typeof msg.email === 'string' && msg.email.trim() ? normalizeEmail(msg.email) : null;
+  if (typeof msg.email === 'string' && msg.email.trim() && !email) return { error: 'that is not an e-mail address' };
+  if (email && emailTaken(email, u.id)) return { error: 'another profile already uses this e-mail address' };
+  const username = typeof msg.username === 'string' && msg.username.trim() ? normalizeUsername(msg.username) : null;
+  if (typeof msg.username === 'string' && msg.username.trim() && !username) return { error: 'a user name has 3 to 20 letters, digits, "." or "_"' };
+  if (username && usernameTaken(username, u.id)) return { error: 'another profile already has this user name' };
+  let h = null;
+  if (typeof msg.password === 'string' && msg.password) {
+    const problem = passwordProblem(msg.password, u.name);
+    if (problem) return { error: POLICY_ERRORS[problem] };
+    h = await hashPassword(msg.password);
+  }
+  if (!email && !username && !h) return { error: 'nothing to change: give --email, --username and/or a password' };
+  // Checked again: the hash awaited, and a request may have taken the address meanwhile.
+  if (email && emailTaken(email, u.id)) return { error: 'another profile already uses this e-mail address' };
+  if (username && usernameTaken(username, u.id)) return { error: 'another profile already has this user name' };
+  if (email) u.email = email;
+  if (username) u.username = username;
+  if (h) { setPassword(u, h); ACCOUNT_FAILS.clear(acctKey(u)); }
+  saveDb();
+  audit(CLI_REQ, 'server.login.set', { target: u, msg: [email && 'email', username && 'username', h && 'password'].filter(Boolean).join(' · ') });
+  return { ...row(u), ok: true, password: !!h, emailLogin: EMAIL_LOGIN };
+}
+
 // The server's own command for a locked-out owner or admin (#584, recover.js): asked over a local
 // socket only this process's user can open (admin-socket.js explains why not by editing db.json).
 // One command: a recovery code for a profile named, or picked by id when several share the name.
 const CLI_REQ = { headers: {}, socket: {} };
 startAdminSocket({
   handle: async msg => {
-    if (!msg || msg.cmd !== 'recover') return { error: 'unknown command' };
+    if (!msg || (msg.cmd !== 'recover' && msg.cmd !== 'set-login')) return { error: 'unknown command' };
     const id = typeof msg.id === 'string' ? msg.id : null;
     const k = nameKey(typeof msg.name === 'string' ? msg.name : '');
-    const found = id ? db.users.filter(u => u.id === id) : k ? db.users.filter(u => nameKey(u.name) === k || u.email === k) : [];
-    const row = u => ({ id: u.id, name: u.name, created: u.created || null, admin: isAdmin(u), owner: isOwner(u) });
+    const found = id ? db.users.filter(u => u.id === id) : k ? db.users.filter(u => nameKey(u.name) === k || u.email === k || (!!u.username && u.username === k.replace(/^@/, ''))) : [];
+    const row = u => ({ id: u.id, name: u.name, created: u.created || null, admin: isAdmin(u), owner: isOwner(u), ...(u.username ? { username: u.username } : {}), ...(u.email ? { email: u.email } : {}) });
     if (!found.length) return { error: id ? 'no profile with that id' : 'no profile with that name' };
     if (found.length > 1) return { error: 'several profiles have that name: pick one with --id', matches: found.map(row) };
     const u = found[0];
+    if (msg.cmd === 'set-login') return setLoginFromServer(u, msg, row);
     if (u.disabled) return { error: 'that profile is disabled: enable it in the admin dashboard first' };
     const { code, link } = issueRecovery(CLI_REQ, u, null);
     return { ...row(u), code, expires: link.exp };

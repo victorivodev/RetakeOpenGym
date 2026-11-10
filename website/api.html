@@ -248,7 +248,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <p class="api-facts">
     <span>OpenAPI 3.1.0</span>
     <span>openGym v1.4.3</span>
-    <span>93 endpoints</span>
+    <span>99 endpoints</span>
     <span>AGPL-3.0-or-later</span>
   </p>
 
@@ -632,6 +632,131 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="prow rrow">
     <span class="r-code s4">409</span>
     <span class="p-desc"><code>last-admin</code>: the only admin, with other profiles still on the instance.<span class="r-sig"><code>{&quot;error&quot;:&quot;the last admin cannot leave while other profiles remain&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">429</span>
+    <span class="p-desc">Paused by the sign-in throttle (see <i>Throttling</i> in the description). The request was not looked at; try again after <code>Retry-After</code> seconds.<span class="r-sig"><code>{&quot;error&quot;:&quot;too many attempts, try again later&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-updateProfile">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/account/profile</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Retake Gym: change the display name and/or the user name</span>
+  </summary>
+  <div class="ep-body">
+<p><code>name</code> (1 to 40 characters) and <code>username</code> (3 to 20 lower-case letters, digits, &quot;.&quot; or &quot;_&quot;, unique; an empty one removes it, except with EMAIL_LOGIN) are both optional.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">name</span>
+    <span class="p-type">string <span class="p-hint">(&le; 40 chars)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">username</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Saved.<span class="r-sig">{ ok: boolean, user: <a href="#schema-SessionUser">SessionUser</a> }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">400</span>
+    <span class="p-desc"><code>missing</code>, <code>username-missing</code> or <code>username-invalid</code>.</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">Not signed in.</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">409</span>
+    <span class="p-desc"><code>username-taken</code> or <code>name-taken</code>.</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">429</span>
+    <span class="p-desc">Paused by the sign-in throttle (see <i>Throttling</i> in the description). The request was not looked at; try again after <code>Retry-After</code> seconds.<span class="r-sig"><code>{&quot;error&quot;:&quot;too many attempts, try again later&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-getAvatar">
+  <summary>
+    <span class="m get">GET</span>
+    <span class="ep-path"><code>/api/account/avatar</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Retake Gym: a profile's photo</span>
+  </summary>
+  <div class="ep-body">
+<p>The photo of the profile <code>id</code> (the caller's own without it), for any signed-in caller.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+<p class="ep-h">Query parameters</p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">id</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">The photo as a data URL, or null.<span class="r-sig">{ id: string, version: string, avatar: string }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">Not signed in.</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">No such profile.</span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-setAvatar">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/account/avatar</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Retake Gym: set or remove this profile's photo</span>
+  </summary>
+  <div class="ep-body">
+<p><code>avatar</code>: a data: URL of a JPEG, PNG or WebP picture (at most 400 KB of text), or null to remove it.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">avatar</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Saved.<span class="r-sig">{ ok: boolean, user: <a href="#schema-SessionUser">SessionUser</a> }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">400</span>
+    <span class="p-desc"><code>avatar-invalid</code>.</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">Not signed in.</span>
   </div>
   <div class="prow rrow">
     <span class="r-code s4">429</span>
@@ -1113,7 +1238,12 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="prow">
     <span class="p-name">email</span>
     <span class="p-type">string <span class="p-hint">(&le; 254 chars)</span></span>
-    <span class="p-desc">Optional sign-in e-mail.</span>
+    <span class="p-desc">Optional sign-in e-mail (required with EMAIL_LOGIN).</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">username</span>
+    <span class="p-type">string <span class="p-hint">(&le; 21 chars)</span></span>
+    <span class="p-desc">Retake Gym: the unique user name (required with EMAIL_LOGIN).</span>
   </div>
 </div>
 <pre><code>{
@@ -1129,7 +1259,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </div>
   <div class="prow rrow">
     <span class="r-code s4">400</span>
-    <span class="p-desc">The password breaks the policy with <code>too-short</code> (under 10 characters), <code>too-long</code> (over 256) or <code>too-common</code>; a field is <code>missing</code>; or <code>email-invalid</code>: the <code>email</code> given is not an e-mail address.<span class="r-sig"><code>{&quot;error&quot;:&quot;this password is too easy to guess&quot;}</code> &middot; <code>{&quot;error&quot;:&quot;that is not an e-mail address&quot;}</code></span></span>
+    <span class="p-desc">The password breaks the policy with <code>too-short</code> (under 10 characters), <code>too-long</code> (over 256) or <code>too-common</code>; a field is <code>missing</code>; or <code>email-invalid</code>: the <code>email</code> given is not an e-mail address. Retake Gym, with EMAIL_LOGIN: <code>email-missing</code>, <code>username-missing</code> or <code>username-invalid</code> (3 to 20 lower-case letters, digits, &quot;.&quot; or &quot;_&quot;).<span class="r-sig"><code>{&quot;error&quot;:&quot;this password is too easy to guess&quot;}</code> &middot; <code>{&quot;error&quot;:&quot;that is not an e-mail address&quot;}</code></span></span>
   </div>
   <div class="prow rrow">
     <span class="r-code s4">403</span>
@@ -1137,7 +1267,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </div>
   <div class="prow rrow">
     <span class="r-code s4">409</span>
-    <span class="p-desc"><code>name-taken</code> (see NameTaken) or <code>email-taken</code>: the e-mail is in use by another profile.<span class="r-sig"><code>{&quot;error&quot;:&quot;another profile already uses this e-mail address&quot;}</code></span></span>
+    <span class="p-desc"><code>name-taken</code> (see NameTaken) or <code>email-taken</code>: the e-mail is in use by another profile. Retake Gym: <code>username-taken</code>, the user name is in use or reserved.<span class="r-sig"><code>{&quot;error&quot;:&quot;another profile already uses this e-mail address&quot;}</code></span></span>
   </div>
   <div class="prow rrow">
     <span class="r-code s4">429</span>
@@ -1341,6 +1471,191 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="prow rrow">
     <span class="r-code s4">409</span>
     <span class="p-desc">The password is the profile's only way in.<span class="r-sig"><code>{&quot;error&quot;:&quot;the password is the only way into this profile&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">429</span>
+    <span class="p-desc">Paused by the sign-in throttle (see <i>Throttling</i> in the description). The request was not looked at; try again after <code>Retry-After</code> seconds.<span class="r-sig"><code>{&quot;error&quot;:&quot;too many attempts, try again later&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s5">503</span>
+    <span class="p-desc">Every password check slot and the short queue behind them are taken.<span class="r-sig"><code>{&quot;error&quot;:&quot;the server is busy, try again in a moment&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-appLogin">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/app/login</code><span class="ep-chip public">public</span></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Retake Gym: phone app sign-in with e-mail (or user name) and password</span>
+  </summary>
+  <div class="ep-body">
+<p>The same checks and throttle as <code>POST /api/login/password</code>, for the phone app, whose WebView origin is never ORIGIN. Answers with a session token in the body (as <code>POST /api/pair/redeem</code> does) and never sets a cookie, which is why it is CSRF-exempt. With EMAIL_LOGIN the identifier is the e-mail or the user name.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Public: no authentication required.</span></p>
+
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">identifier</span>
+    <span class="p-type">string</span>
+    <span class="p-desc">The e-mail or the user name.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">name</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">email</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">password<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Signed in.<span class="r-sig">{ token: string, user: <a href="#schema-SessionUser">SessionUser</a> }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">400</span>
+    <span class="p-desc">A field is missing.</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">Wrong identifier or password (<code>bad-credentials</code>).</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">403</span>
+    <span class="p-desc">The account is disabled.</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">429</span>
+    <span class="p-desc">Paused by the sign-in throttle (see <i>Throttling</i> in the description). The request was not looked at; try again after <code>Retry-After</code> seconds.<span class="r-sig"><code>{&quot;error&quot;:&quot;too many attempts, try again later&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s5">503</span>
+    <span class="p-desc">Every password check slot and the short queue behind them are taken.<span class="r-sig"><code>{&quot;error&quot;:&quot;the server is busy, try again in a moment&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-appRegister">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/app/register</code><span class="ep-chip public">public</span></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Retake Gym: phone app sign-up</span>
+  </summary>
+  <div class="ep-body">
+<p><code>POST /api/register/password</code> for the phone app: the same fields and rules, answered with a token in the body and no cookie (CSRF-exempt for that reason). With EMAIL_LOGIN, <code>email</code> and <code>username</code> are required (<code>email-missing</code>, <code>username-missing</code>, <code>username-invalid</code>, <code>409 username-taken</code>) and <code>name</code> is only the display name.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Public: no authentication required.</span></p>
+
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">name</span>
+    <span class="p-type">string <span class="p-hint">(&le; 40 chars)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">username</span>
+    <span class="p-type">string <span class="p-hint">(&le; 21 chars)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">email</span>
+    <span class="p-type">string <span class="p-hint">(&le; 254 chars)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">password<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string <span class="p-hint">(&le; 256 chars)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">code</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Registered and signed in.<span class="r-sig">{ token: string, user: <a href="#schema-SessionUser">SessionUser</a> }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">400</span>
+    <span class="p-desc">A field is missing or invalid</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">403</span>
+    <span class="p-desc">Invite-only and the code is not valid.</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">409</span>
+    <span class="p-desc"><code>email-taken</code>, <code>username-taken</code> or <code>name-taken</code>.</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">429</span>
+    <span class="p-desc">Paused by the sign-in throttle (see <i>Throttling</i> in the description). The request was not looked at; try again after <code>Retry-After</code> seconds.<span class="r-sig"><code>{&quot;error&quot;:&quot;too many attempts, try again later&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s5">503</span>
+    <span class="p-desc">Every password check slot and the short queue behind them are taken.<span class="r-sig"><code>{&quot;error&quot;:&quot;the server is busy, try again in a moment&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-appPasswordReset">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/app/password-reset</code><span class="ep-chip public">public</span></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Retake Gym: phone app redeems a reset code</span>
+  </summary>
+  <div class="ep-body">
+<p><code>POST /api/login/password-reset</code> for the phone app: answered with a token in the body and no cookie (CSRF-exempt for that reason).</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Public: no authentication required.</span></p>
+
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">identifier</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">code<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">next<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string <span class="p-hint">(&le; 256 chars)</span></span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Password set and signed in.<span class="r-sig">{ token: string, user: <a href="#schema-SessionUser">SessionUser</a> }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">400</span>
+    <span class="p-desc">The code is wrong or expired (<code>reset-invalid</code>)</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">403</span>
+    <span class="p-desc">The account is disabled.</span>
   </div>
   <div class="prow rrow">
     <span class="r-code s4">429</span>
@@ -4468,6 +4783,16 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="p-name">admin</span>
     <span class="p-type">boolean</span>
     <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">username</span>
+    <span class="p-type">string</span>
+    <span class="p-desc">Retake Gym: the unique user name (handle), when the profile has one.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">avatar</span>
+    <span class="p-type">string</span>
+    <span class="p-desc">Retake Gym: the photo's version, when the profile has one (GET /api/account/avatar).</span>
   </div>
 </div>
   </div>

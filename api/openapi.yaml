@@ -1058,7 +1058,8 @@ paths:
                 name: { type: string, maxLength: 40 }
                 password: { type: string, minLength: 10, maxLength: 256 }
                 code: { type: string, description: Invite code (INVITE_ONLY only). }
-                email: { type: string, maxLength: 254, description: Optional sign-in e-mail. }
+                email: { type: string, maxLength: 254, description: Optional sign-in e-mail (required with EMAIL_LOGIN). }
+                username: { type: string, maxLength: 21, description: "Retake Gym: the unique user name (required with EMAIL_LOGIN)." }
             example: { name: "Ada", password: "correct horse battery staple", code: "3F9C21A07B54D688" }
       responses:
         '200':
@@ -1077,7 +1078,8 @@ paths:
           description: >-
             The password breaks the policy with `too-short` (under 10 characters), `too-long`
             (over 256) or `too-common`; a field is `missing`; or `email-invalid`: the
-            `email` given is not an e-mail address.
+            `email` given is not an e-mail address. Retake Gym, with EMAIL_LOGIN: `email-missing`,
+            `username-missing` or `username-invalid` (3 to 20 lower-case letters, digits, "." or "_").
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -1093,7 +1095,7 @@ paths:
         '409':
           description: >-
             `name-taken` (see NameTaken) or `email-taken`: the e-mail is in use by another
-            profile.
+            profile. Retake Gym: `username-taken`, the user name is in use or reserved.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -1272,6 +1274,200 @@ paths:
               example: { error: "the password is the only way into this profile", code: "last-way-in" }
         '429': { $ref: '#/components/responses/TooManyRequests' }
         '503': { $ref: '#/components/responses/Busy' }
+
+  /api/app/login:
+    post:
+      tags: [password]
+      operationId: appLogin
+      summary: "Retake Gym: phone app sign-in with e-mail (or user name) and password"
+      description: |
+        The same checks and throttle as `POST /api/login/password`, for the phone app, whose
+        WebView origin is never ORIGIN. Answers with a session token in the body (as
+        `POST /api/pair/redeem` does) and never sets a cookie, which is why it is CSRF-exempt.
+        With EMAIL_LOGIN the identifier is the e-mail or the user name.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                identifier: { type: string, description: The e-mail or the user name. }
+                name: { type: string }
+                email: { type: string }
+                password: { type: string }
+      responses:
+        '200':
+          description: Signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  user: { $ref: '#/components/schemas/SessionUser' }
+        '400': { description: A field is missing., content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: "Wrong identifier or password (`bad-credentials`).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: The account is disabled., content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '503': { $ref: '#/components/responses/Busy' }
+
+  /api/app/register:
+    post:
+      tags: [password]
+      operationId: appRegister
+      summary: "Retake Gym: phone app sign-up"
+      description: |
+        `POST /api/register/password` for the phone app: the same fields and rules, answered with
+        a token in the body and no cookie (CSRF-exempt for that reason). With EMAIL_LOGIN, `email`
+        and `username` are required (`email-missing`, `username-missing`, `username-invalid`,
+        `409 username-taken`) and `name` is only the display name.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                name: { type: string, maxLength: 40 }
+                username: { type: string, maxLength: 21 }
+                email: { type: string, maxLength: 254 }
+                password: { type: string, minLength: 10, maxLength: 256 }
+                code: { type: string }
+      responses:
+        '200':
+          description: Registered and signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  user: { $ref: '#/components/schemas/SessionUser' }
+        '400': { description: A field is missing or invalid, or the password breaks the policy., content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Invite-only and the code is not valid., content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409': { description: "`email-taken`, `username-taken` or `name-taken`.", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '503': { $ref: '#/components/responses/Busy' }
+
+  /api/app/password-reset:
+    post:
+      tags: [password]
+      operationId: appPasswordReset
+      summary: "Retake Gym: phone app redeems a reset code"
+      description: |
+        `POST /api/login/password-reset` for the phone app: answered with a token in the body and
+        no cookie (CSRF-exempt for that reason).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, next]
+              properties:
+                identifier: { type: string }
+                code: { type: string }
+                next: { type: string, minLength: 10, maxLength: 256 }
+      responses:
+        '200':
+          description: Password set and signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  user: { $ref: '#/components/schemas/SessionUser' }
+        '400': { description: The code is wrong or expired (`reset-invalid`), or the password breaks the policy., content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: The account is disabled., content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '503': { $ref: '#/components/responses/Busy' }
+
+  /api/account/profile:
+    post:
+      tags: [auth]
+      operationId: updateProfile
+      summary: "Retake Gym: change the display name and/or the user name"
+      description: |
+        `name` (1 to 40 characters) and `username` (3 to 20 lower-case letters, digits, "." or
+        "_", unique; an empty one removes it, except with EMAIL_LOGIN) are both optional.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, maxLength: 40 }
+                username: { type: string }
+      responses:
+        '200':
+          description: Saved.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  user: { $ref: '#/components/schemas/SessionUser' }
+        '400': { description: "`missing`, `username-missing` or `username-invalid`.", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: Not signed in., content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409': { description: "`username-taken` or `name-taken`.", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /api/account/avatar:
+    get:
+      tags: [auth]
+      operationId: getAvatar
+      summary: "Retake Gym: a profile's photo"
+      description: The photo of the profile `id` (the caller's own without it), for any signed-in caller.
+      parameters:
+        - { name: id, in: query, required: false, schema: { type: string } }
+      responses:
+        '200':
+          description: The photo as a data URL, or null.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  version: { type: string, nullable: true }
+                  avatar: { type: string, nullable: true }
+        '401': { description: Not signed in., content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: No such profile., content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    post:
+      tags: [auth]
+      operationId: setAvatar
+      summary: "Retake Gym: set or remove this profile's photo"
+      description: "`avatar`: a data: URL of a JPEG, PNG or WebP picture (at most 400 KB of text), or null to remove it."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                avatar: { type: string, nullable: true }
+      responses:
+        '200':
+          description: Saved.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  user: { $ref: '#/components/schemas/SessionUser' }
+        '400': { description: "`avatar-invalid`.", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: Not signed in., content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
 
   /api/account/email:
     post:
@@ -4161,7 +4357,9 @@ components:
         name: { type: string }
         owner: { type: boolean, description: Present (true) only for the instance owner. }
         admin: { type: boolean }
-      example: { id: "Zk3q9XyPbA2LmN0v", name: "Ada", admin: false }
+        username: { type: string, description: "Retake Gym: the unique user name (handle), when the profile has one." }
+        avatar: { type: string, description: "Retake Gym: the photo's version, when the profile has one (GET /api/account/avatar)." }
+      example: { id: "Zk3q9XyPbA2LmN0v", name: "Ada", admin: false, username: "ada" }
 
     # ------------------------------------------------------------------ WebAuthn
     # These mirror @simplewebauthn/server v13's JSON shapes (themselves the W3C

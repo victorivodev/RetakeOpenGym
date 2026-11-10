@@ -58,6 +58,8 @@ import { ServerSyncSection, KeptChangesRows, leaveServer, connectServer, passkey
 import { passwordOn, PasswordRow, openPasswordSignIn, openPasswordRegister } from '../components/PasswordAuth.jsx'
 import { usePasskeys, PasskeysRow, DeviceLinkRow, openDeviceLinkRedeem, PairSheet } from '../components/Passkeys.jsx'
 import { DeleteAccountRow } from '../components/DeleteAccount.jsx'
+import { EmailAuth, emailLoginOn } from '../components/EmailAuth.jsx'
+import { ProfileRow, Avatar } from '../components/Profile.jsx'
 import { warmupAutoOf } from '../lib/warmup-ramp.js'
 import { Section, Row, SelectRow, Switch, Segmented, Button, TextField, SearchField } from '../components/ui.jsx'
 import { POLICIES_FOR, POLICY_NAME, POLICY_DESC, profileRule } from '../lib/progression.js'
@@ -135,6 +137,9 @@ export default function Settings({ page = null, find = null, via = null, entryKe
   // Name-and-password sign-in, where the instance offers it (#118).
   const config = useStore(s => s.config)
   const pwOn = passwordOn(config)
+  // Retake Gym (EMAIL_LOGIN): e-mail and password are the way in; passkeys, device codes and
+  // pairing codes are not offered.
+  const emailOn = emailLoginOn(config)
   // What the app is showing, which for a profile that never picked a language is worked out on
   // this device rather than stored (#303).
   const lang = effectiveLang(S, config)
@@ -1191,9 +1196,10 @@ export default function Settings({ page = null, find = null, via = null, entryKe
           Admin and Disconnect sit in the same block; a browser's account rows follow in their own. */}
       {user && !DEMO && <ServerSyncSection>
         {MOBILE && <>
+          {emailOn && <ProfileRow />}
           {user.admin && <Row icon="crown" iconTint="var(--indigo)" title={t('Admin dashboard')} accessory="chevron" onClick={() => nav('/admin')} />}
           {/* A code to sign in on a computer (#551), behind the same proof as in a browser. */}
-          <DeviceLinkRow state={passkeys.st} />
+          {emailOn ? <PasswordRow version={credsV} emailMode /> : <DeviceLinkRow state={passkeys.st} />}
           <AccountIdRow id={user.id} />
           <Row icon="signOut" iconTint="var(--red)" title={t('Disconnect')} danger onClick={disconnect} />
         </>}
@@ -1214,6 +1220,16 @@ export default function Settings({ page = null, find = null, via = null, entryKe
             onClick={() => confirmSheet({ title: t('Reset demo data?'), message: t('Puts the example plan, workouts and weigh-ins back the way they started.'), confirmText: t('Reset'), onConfirm: () => { resetDemo(); nav('/home'); toast(t('Demo data reset')) } })} />
           <Row icon="rocket" iconTint="var(--indigo)" title={t('Self-host Retake Gym')} subtitle={t('Passkey sign-in, sync across your devices, your own data.')} accessory="chevron"
             onClick={() => window.open(REPO, '_blank', 'noopener')} />
+        </> : user && emailOn ? <>
+          <ProfileRow />
+          {user.admin && <Row icon="crown" iconTint="var(--indigo)" title={t('Admin dashboard')} accessory="chevron" onClick={() => nav('/admin')} />}
+          <PasswordRow version={credsV} emailMode />
+          {/* The new phone app signs in with the e-mail; a code is still handy for an older one. */}
+          <Row icon="qr" iconTint="var(--blue)" title={t('Pair the mobile app')} subtitle={t('Connect the Retake Gym app on your phone to this account.')} accessory="chevron"
+            onClick={() => useUI.getState().openSheet(close => <PairSheet close={close} />)} />
+          <Row icon="signOut" iconTint="var(--red)" title={t('Sign out')} danger onClick={signOutHere} />
+          <Row icon="shield" iconTint="var(--red)" title={t('Sign out everywhere')} subtitle={t('Ends this profile’s sessions on all your devices.')} danger onClick={signOutEverywhere} />
+          <AccountIdRow id={user.id} />
         </> : user ? <>
           {user.admin && <Row icon="crown" iconTint="var(--indigo)" title={t('Admin dashboard')} accessory="chevron" onClick={() => nav('/admin')} />}
           <PasskeysRow state={passkeys.st} changed={credsChanged} />
@@ -1224,6 +1240,10 @@ export default function Settings({ page = null, find = null, via = null, entryKe
           <Row icon="signOut" iconTint="var(--red)" title={t('Sign out')} danger onClick={signOutHere} />
           <Row icon="shield" iconTint="var(--red)" title={t('Sign out everywhere')} subtitle={t('Ends this profile’s sessions on all your devices.')} danger onClick={signOutEverywhere} />
           <AccountIdRow id={user.id} />
+        </> : emailOn ? <>
+          <Row icon="person" iconTint="var(--acc)" title={t('Sign in or create an account')} subtitle={t('Keeps your data safe and separate per person.')} accessory="chevron"
+            onClick={() => useUI.getState().openSheet(close => <><h3>{t('Sign in')}</h3><EmailAuth onDone={close} /></>)} />
+          <KeptChangesRows />
         </> : webauthnOK() ? <>
           <Row icon="plusCircle" iconTint="var(--acc)" title={t('Create passkey profile')} subtitle={t('Keeps your data safe and separate per person.')} accessory="chevron" onClick={registerHere} />
           <Row icon="fingerprint" iconTint="var(--blue)" title={t('Sign in with passkey')} accessory="chevron" onClick={passkeySignIn} />
@@ -1314,7 +1334,7 @@ function SettingsRoot({ ctx, preview, open, user, sync, home, go, entryKey }) {
     </Section> : <div className="sp-empty">{t('No setting matches “{0}”.', q.trim())}</div>) : <>
       <Section>
         <button className="lrow tap sp-acct" data-tour="settings-account" onClick={() => open('account')}>
-          <span className={'sp-avatar' + (initial ? ' on' : '')} aria-hidden="true">{initial || <Icon name="personCircle" />}</span>
+          <span className={'sp-avatar' + (initial ? ' on' : '')} aria-hidden="true">{user?.avatar && !DEMO ? <Avatar user={user} size={56} /> : initial || <Icon name="personCircle" />}</span>
           <span className="lrow-m"><span className="lrow-t">{acct.title}</span><span className="lrow-s">{acct.sub}</span></span>
           <Icon name="chevronRight" className="lrow-c" />
         </button>
