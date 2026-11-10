@@ -1665,6 +1665,7 @@ export default {
   'Barcode': 'Vonalkód',
   'Delete weigh-in': 'Mérés törlése',
   'Green': 'Zöld',
+  'Gold': 'Arany',
   'Blue': 'Kék',
   'Orange': 'Narancs',
   'Purple': 'Lila',

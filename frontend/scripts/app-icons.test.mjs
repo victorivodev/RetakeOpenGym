@@ -70,18 +70,19 @@ describe('the Halloween icon', () => {
     expect(scene(read(v.art)).length).toBeGreaterThan(10)
   })
 
-  it('is dark at the edges, orange on the dumbbell, pale on the moon', () => {
+  it('is dark at the edges, orange on the mark, the nib lit, pale on the moon', () => {
     const shapes = scene(read(v.art))
     const at = (x, y) => shapes.find(s => s.hit(x, y)).color(x, y).map(Math.round)
-    expect(at(256, 256)).toEqual([255, 122, 26])   // the bar
-    expect(at(90, 110)).toEqual([247, 232, 180])   // the moon's lit side
+    expect(at(256, 203)).toEqual([255, 122, 26])   // the bar
+    expect(at(258, 353)).toEqual([255, 209, 102])  // the nib's glowing hole
+    expect(at(104, 140)).toEqual([247, 232, 180])   // the moon's lit side
     const corner = at(10, 500)
     expect(Math.max(...corner)).toBeLessThan(40)
   })
 
-  it('keeps the web and its spider inside the safe zone Android promises', () => {
+  it('keeps the spider and its thread inside the safe zone Android promises', () => {
     // The round mask shows up to 256 from the centre but only guarantees 66 of 72 dp (about 234):
-    // in that rim only the two thin moorings may show, not the web itself.
+    // in that rim only the thin thread may show, not the spider.
     const shapes = scene(read(v.art))
     let lit = 0
     for (let y = 0; y < 512; y += 2) for (let x = 0; x < 512; x += 2) {
@@ -89,7 +90,7 @@ describe('the Halloween icon', () => {
       if (d >= 234 && d <= 256 && Math.max(...shapes.find(s => s.hit(x, y)).color(x, y)) > 120) lit++
     }
     expect(lit).toBeLessThan(80)
-    expect(shapes.find(s => s.hit(294, 178)).color(294, 178).map(Math.round)).toEqual([236, 223, 255])   // the spider
+    expect(shapes.find(s => s.hit(420, 250)).color(420, 250).map(Math.round)).toEqual([236, 223, 255])   // the spider
   })
 })
 
@@ -101,13 +102,13 @@ describe('the Christmas icon', () => {
     expect(scene(read(v.art)).length).toBeGreaterThan(20)
   })
 
-  it('a lime dumbbell in a Santa hat, wrapped with a red ribbon, on a dark winter night', () => {
+  it('a gold mark in a Santa hat, wrapped with a red ribbon, on a dark winter night', () => {
     const shapes = scene(read(v.art))
     const at = (x, y) => shapes.find(s => s.hit(x, y)).color(x, y).map(Math.round)
-    expect(at(256, 256)).toEqual([163, 230, 53])    // the bar, openGym lime
-    expect(at(165, 140)).toEqual([230, 57, 70])     // the hat
-    expect(at(357, 300)).toEqual([230, 57, 70])     // the ribbon
-    expect(at(150, 164)).toEqual([248, 249, 250])   // the hat's brim
+    expect(at(258, 400)).toEqual([232, 204, 133])   // the nib, Retake gold
+    expect(at(222, 80)).toEqual([230, 57, 70])      // the hat
+    expect(at(341, 220)).toEqual([230, 57, 70])     // the ribbon
+    expect(at(208, 90)).toEqual([248, 249, 250])    // the hat's brim
     expect(Math.max(...at(10, 500))).toBeLessThan(40)
   })
 

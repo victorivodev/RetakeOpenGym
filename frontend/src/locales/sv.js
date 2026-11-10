@@ -1683,6 +1683,7 @@ export default {
   'Barcode': 'Streckkod',
   'Delete weigh-in': 'Ta bort vägning',
   'Green': 'Grön',
+  'Gold': 'Guld',
   'Blue': 'Blå',
   'Orange': 'Orange',
   'Purple': 'Lila',

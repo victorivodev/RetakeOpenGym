@@ -1662,6 +1662,7 @@ export default {
   'Barcode': 'बारकोड',
   'Delete weigh-in': 'वज़न प्रविष्टि हटाएँ',
   'Green': 'हरा',
+  'Gold': 'सुनहरा',
   'Blue': 'नीला',
   'Orange': 'नारंगी',
   'Purple': 'बैंगनी',

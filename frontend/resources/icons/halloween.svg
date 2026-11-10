@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 512 512">
-  <!-- openGym app icon "halloween", drawn by hand (the only one not written by scripts/app-icons.mjs,
-       which renders it). The dumbbell is the glyph of resources/icon.svg in pumpkin orange; around
-       it a purple night, a crescent moon, a cobweb near the corner and its spider. Only rect, circle,
+  <!-- Retake Gym app icon "halloween", drawn by hand (scripts/app-icons.mjs renders it, it does not
+       write it). The mark of resources/icon.svg in pumpkin orange, its nib lit from inside like a
+       jack-o'-lantern; around it a purple night, a crescent moon and a spider on its thread. Only rect, circle,
        line, polyline, polygon and one radialGradient: what the script knows how to draw. -->
   <defs>
     <radialGradient id="night" gradientUnits="userSpaceOnUse" cx="256" cy="300" r="380">
@@ -13,57 +13,45 @@
   <!-- Everything that matters stays within 228 of the centre: Android cuts the art to a circle and
        only promises the middle 66 dp of its 72, and iOS rounds the corners off. -->
   <!-- the moon: a pale disc with the night bitten out of it -->
-  <circle cx="128" cy="128" r="46" fill="#f7e8b4"/>
-  <circle cx="150" cy="112" r="42" fill="url(#night)"/>
+  <circle cx="130" cy="130" r="36" fill="#f7e8b4"/>
+  <circle cx="148" cy="118" r="32" fill="url(#night)"/>
   <g fill="#f7e8b4">
-    <circle cx="222" cy="72" r="6"/>
-    <circle cx="246" cy="164" r="4"/>
+    <circle cx="380" cy="80" r="6"/>
+    <circle cx="110" cy="300" r="4"/>
     <circle cx="66" cy="236" r="4"/>
   </g>
-  <!-- the cobweb, its hub pulled in from the top right corner; only the moorings run off the edge -->
-  <g stroke="#b7a2de" stroke-width="4">
-    <line x1="412" y1="100" x2="512" y2="44"/>
-    <line x1="412" y1="100" x2="468" y2="0"/>
-  </g>
-  <g stroke="#b7a2de" stroke-width="6">
-    <line x1="412" y1="100" x2="282" y2="100"/>
-    <line x1="412" y1="100" x2="307.9" y2="143.1"/>
-    <line x1="412" y1="100" x2="349" y2="163"/>
-    <line x1="412" y1="100" x2="382.9" y2="170.2"/>
-    <line x1="412" y1="100" x2="412" y2="172"/>
-    <polyline points="365.2,100 371.9,103.5 375.8,106.7 376.1,110.5 374.5,115.5 381.6,115.6 386.1,116.4 388.2,118.8 389.3,122.7 394.3,121 397.8,120.6 399.8,122.2 401.5,125.3 404.9,122.9 407.5,122 409.6,123.2 412,125.9"/>
-    <polyline points="324.9,100 337.4,106.5 344.6,112.4 345.2,119.5 342.2,128.9 355.4,129 363.9,130.6 367.8,135 369.8,142.2 379.1,139.1 385.5,138.4 389.3,141.3 392.5,147 398.8,142.6 403.6,141 407.6,143.2 412,148.2"/>
-    <polyline points="282,100 300.7,109.7 311.3,118.5 312.4,129.1 307.9,143.1 327.5,143.3 340.2,145.6 346,152.3 349,163 362.9,158.4 372.4,157.3 378.2,161.6 382.9,170.2 392.4,163.6 399.5,161.1 405.5,164.5 412,172"/>
-  </g>
-  <!-- its spider, on a thread from the web, clear of the plates -->
-  <line x1="294" y1="106" x2="294" y2="162" stroke="#b7a2de" stroke-width="4"/>
+  <!-- the spider, down its thread to the right of the bar -->
+  <line x1="420" y1="60" x2="420" y2="234" stroke="#b7a2de" stroke-width="4"/>
   <g stroke="#ecdfff" stroke-width="4.5">
-    <polyline points="287.6,168.4 276.4,160.4 271.6,168.4"/>
-    <polyline points="300.4,168.4 311.6,160.4 316.4,168.4"/>
-    <polyline points="287.6,173.2 273.2,171.6 268.4,181.2"/>
-    <polyline points="300.4,173.2 314.8,171.6 319.6,181.2"/>
-    <polyline points="288.4,178 276.4,182.8 274.8,192.4"/>
-    <polyline points="299.6,178 311.6,182.8 313.2,192.4"/>
+    <polyline points="413.6,240.4 402.4,232.4 397.6,240.4"/>
+    <polyline points="426.4,240.4 437.6,232.4 442.4,240.4"/>
+    <polyline points="413.6,245.2 399.2,243.6 394.4,253.2"/>
+    <polyline points="426.4,245.2 440.8,243.6 445.6,253.2"/>
+    <polyline points="414.4,250 402.4,254.8 400.8,264.4"/>
+    <polyline points="425.6,250 437.6,254.8 439.2,264.4"/>
   </g>
   <g fill="#ecdfff">
-    <circle cx="294" cy="165.2" r="7.2"/>
-    <circle cx="294" cy="178" r="10.4"/>
+    <circle cx="420" cy="237.2" r="7.2"/>
+    <circle cx="420" cy="250" r="10.4"/>
   </g>
-  <!-- the dumbbell, pumpkin orange -->
-  <g fill="#ff7a1a">
-    <rect x="80" y="242" width="352" height="28"/>
-    <rect x="80" y="199" width="36" height="114"/>
-    <rect x="131" y="169" width="47" height="174"/>
-    <rect x="334" y="169" width="47" height="174"/>
-    <rect x="396" y="199" width="36" height="114"/>
-  </g>
-  <!-- the big plates carved like jack-o'-lanterns: two eyes and a grin each, lit from inside -->
-  <g fill="#ffd166">
-    <polygon points="136,214 151,214 143.5,198"/>
-    <polygon points="158,214 173,214 165.5,198"/>
-    <polygon points="136,292 154.5,302 173,292 170,310 164,304 154.5,316 145,304 139,310"/>
-    <polygon points="339,214 354,214 346.5,198"/>
-    <polygon points="361,214 376,214 368.5,198"/>
-    <polygon points="339,292 357.5,302 376,292 373,310 367,304 357.5,316 348,304 342,310"/>
-  </g>
+  <!-- the mark, pumpkin orange, the nib's hole glowing -->
+  <line x1="307.9" y1="162.5" x2="307.9" y2="271.4" stroke="#ff7a1a" stroke-width="6.1"/>
+  <line x1="227.4" y1="130.4" x2="227.4" y2="202.8" stroke="#ff7a1a" stroke-width="6.1"/>
+  <line x1="208.3" y1="130.4" x2="227.4" y2="130.4" stroke="#ff7a1a" stroke-width="6.1"/>
+  <line x1="208.3" y1="98.2" x2="208.3" y2="130.4" stroke="#ff7a1a" stroke-width="6.1"/>
+  <line x1="258.1" y1="120.4" x2="258.1" y2="202.8" stroke="#ff7a1a" stroke-width="6.1"/>
+  <line x1="258.1" y1="120.4" x2="290.3" y2="120.4" stroke="#ff7a1a" stroke-width="6.1"/>
+  <circle cx="307.9" cy="161" r="12.3" fill="#ff7a1a"/>
+  <circle cx="208.3" cy="98.2" r="12.3" fill="#ff7a1a"/>
+  <circle cx="290.3" cy="120.4" r="12.3" fill="#ff7a1a"/>
+  <line x1="132.8" y1="203.2" x2="379.2" y2="203.2" stroke="#ff7a1a" stroke-width="8.6"/>
+  <rect x="161.6" y="158.3" width="18.4" height="89.8" fill="#ff7a1a"/>
+  <rect x="332" y="158.3" width="18.4" height="89.8" fill="#ff7a1a"/>
+  <rect x="144.3" y="170.9" width="15" height="64.5" fill="#ff7a1a"/>
+  <rect x="352.7" y="170.9" width="15" height="64.5" fill="#ff7a1a"/>
+  <rect x="182.3" y="190.5" width="5.2" height="25.3" fill="#ff7a1a"/>
+  <rect x="324.5" y="190.5" width="5.2" height="25.3" fill="#ff7a1a"/>
+  <polygon points="255.7,242.9 205.1,369.6 232,426.3 289.1,426.3 311.6,369.5 261,242.9" fill="#ff7a1a"/>
+  <rect x="256.7" y="234.4" width="3.2" height="104.8" fill="#0d0517"/>
+  <circle cx="258.3" cy="353" r="15.6" fill="#ffd166"/>
 </svg>
