@@ -1710,6 +1710,7 @@ export default {
   'Barcode': 'বারকোড',
   'Delete weigh-in': 'ওজন মাপা মুছুন',
   'Green': 'সবুজ',
+  'Gold': 'সোনালি',
   'Blue': 'নীল',
   'Orange': 'কমলা',
   'Purple': 'বেগুনি',

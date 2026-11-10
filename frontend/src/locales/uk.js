@@ -1652,6 +1652,7 @@ export default {
   'Barcode': 'Штрихкод',
   'Delete weigh-in': 'Видалити зважування',
   'Green': 'Зелений',
+  'Gold': 'Золотий',
   'Blue': 'Синій',
   'Orange': 'Помаранчевий',
   'Purple': 'Фіолетовий',

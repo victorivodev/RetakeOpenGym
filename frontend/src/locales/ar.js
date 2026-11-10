@@ -1710,6 +1710,7 @@ export default {
   'Barcode': 'رمز شريطي',
   'Delete weigh-in': 'حذف الوزن المسجّل',
   'Green': 'أخضر',
+  'Gold': 'ذهبي',
   'Blue': 'أزرق',
   'Orange': 'برتقالي',
   'Purple': 'بنفسجي',

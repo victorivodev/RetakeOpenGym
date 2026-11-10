@@ -1673,6 +1673,7 @@ export default {
   'Barcode': 'บาร์โค้ด',
   'Delete weigh-in': 'ลบการชั่งน้ำหนัก',
   'Green': 'เขียว',
+  'Gold': 'ทอง',
   'Blue': 'น้ำเงิน',
   'Orange': 'ส้ม',
   'Purple': 'ม่วง',

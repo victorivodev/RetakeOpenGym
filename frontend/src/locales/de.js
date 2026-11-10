@@ -1682,6 +1682,7 @@ export default {
   'Barcode': 'Barcode',
   'Delete weigh-in': 'Wiegung löschen',
   'Green': 'Grün',
+  'Gold': 'Gold',
   'Blue': 'Blau',
   'Orange': 'Orange',
   'Purple': 'Lila',

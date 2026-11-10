@@ -1662,6 +1662,7 @@ export default {
   'Barcode': 'Barkod',
   'Delete weigh-in': 'Tartıyı sil',
   'Green': 'Yeşil',
+  'Gold': 'Altın',
   'Blue': 'Mavi',
   'Orange': 'Turuncu',
   'Purple': 'Mor',

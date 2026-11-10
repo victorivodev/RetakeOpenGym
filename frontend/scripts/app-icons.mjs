@@ -1,20 +1,20 @@
 #!/usr/bin/env node
 /* The alternate home-screen icons (Settings → Look & Home → App icon), drawn from
- * src/lib/app-icon-variants.js and the dumbbell in resources/icon.svg.
+ * src/lib/app-icon-variants.js and the Retake Gym mark (markShapes below).
  *
- * The glyph is five rectangles, so this draws them itself (4x4 to 8x8 samples per pixel for the
- * edges) and writes the PNGs with node:zlib: no sharp or resvg to install, and the same bytes on
- * every machine, which the test checks. A variant with `art` (Halloween) is a hand-made SVG
- * instead, drawn by the small renderer below (rect, circle, line, polyline, polygon, one radial
- * gradient). Written per variant:
- *   resources/icons/<id>.svg                                  the source (the glyph ones only)
+ * The mark is a few lines, circles, rectangles and one polygon, so the small renderer below draws
+ * it (rect, circle, line, polyline, polygon, one radial gradient, 4x4 samples per pixel) and writes
+ * the PNGs with node:zlib: no sharp or resvg to install, and the same bytes on every machine,
+ * which the test checks. A variant with `art` (Halloween) is a hand-made SVG instead, drawn by the
+ * same renderer. Written per variant:
+ *   resources/icons/<id>.svg                                  the source (the plain ones only)
  *   public/app-icons/<id>.png                                 112 px preview for the settings row
  *   ios/App/App/Assets.xcassets/AppIcon-<Name>.appiconset/    1024 px, opaque (Apple refuses alpha)
  *   android/app/src/main/res/mipmap-<dpi>/ic_launcher_<id>{,_round,_foreground}.png
  *   android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_<id>{,_round}.xml
  *   android/app/src/main/res/values/app_icons.xml             the adaptive icons' background colours
- * The default icon keeps the files @capacitor/assets made for it (docs/MOBILE.md); only its
- * preview comes from here.
+ * The default variant also writes the primary icon: resources/icon.svg, public/icon-512.png and
+ * icon-180.png (PWA), the iOS AppIcon set and Android's ic_launcher{,_round,_foreground,_background}.
  *
  * Usage: node scripts/app-icons.mjs            write everything
  *        node scripts/app-icons.mjs --check    exit 1 when a committed file differs from a fresh draw */
@@ -32,52 +32,64 @@ export const DENSITIES = { ldpi: 0.75, mdpi: 1, hdpi: 1.5, xhdpi: 2, xxhdpi: 3, 
 export const PREVIEW = 112
 export const IOS_SIZE = 1024
 
-/** The glyph's rectangles, in the 512 grid of resources/icon.svg: one source for every icon. */
-export function glyph(svg = readFileSync(join(ROOT, 'resources/icon.svg'), 'utf8')) {
-  const g = svg.match(/<g[^>]*>([\s\S]*?)<\/g>/)?.[1] || ''
-  return [...g.matchAll(/<rect\s+x="(\d+)"\s+y="(\d+)"\s+width="(\d+)"\s+height="(\d+)"/g)]
-    .map(m => m.slice(1, 5).map(Number))
+/* The Retake Gym mark: the Retake pen nib with its circuit traces, the main trace turned into a
+ * barbell. Drawn in the 756 grid of the Retake symbol, placed at 85% so it keeps clear of the
+ * adaptive-icon mask, and written in the 512 grid with only what the renderer below knows. */
+const K = 0.85 * 512 / 756
+const P = (x, y) => [+((56.7 + 0.85 * x) * 512 / 756).toFixed(1), +((57.125 + 0.85 * y) * 512 / 756).toFixed(1)]
+const W = w => +(w * K).toFixed(1)
+const TRACES = [[468.18, 215, 468.18, 404.25], [328.36, 159.23, 328.36, 285], [295.07, 159.23, 328.36, 159.23],
+  [295.07, 103.31, 295.07, 159.23], [381.63, 141.92, 381.63, 285], [381.63, 141.92, 437.56, 141.92]]
+const NODES = [[468.18, 212.5], [295.07, 103.31], [437.56, 141.92]]
+const BAR_Y = 285.74
+// Plates and collar, left side: [x0, x1, height]; the right side mirrors them about x 378.
+const PLATES = [[214, 246, 156], [184, 210, 112], [250, 259, 44]]
+const NIB = [[377.4, 354.8], [289.5, 574.8], [336.3, 673.3], [435.5, 673.3], [474.6, 574.7], [386.7, 354.8]]
+
+/** The mark's elements for a background, a main colour and the nib's (defaults to the main). */
+export function markShapes({ bg, fg, nib = fg }, hole = bg) {
+  const out = []
+  const rect = (x0, y0, x1, y1, fill) => {
+    const [a, b] = P(x0, y0), [c, d] = P(x1, y1)
+    out.push(`<rect x="${a}" y="${b}" width="${+(c - a).toFixed(1)}" height="${+(d - b).toFixed(1)}" fill="${fill}"/>`)
+  }
+  for (const [x1, y1, x2, y2] of TRACES) {
+    const [a, b] = P(x1, y1), [c, d] = P(x2, y2)
+    out.push(`<line x1="${a}" y1="${b}" x2="${c}" y2="${d}" stroke="${fg}" stroke-width="${W(10.66)}"/>`)
+  }
+  for (const [x, y] of NODES) { const [a, b] = P(x, y); out.push(`<circle cx="${a}" cy="${b}" r="${W(21.31)}" fill="${fg}"/>`) }
+  { const [a, b] = P(164, BAR_Y), [c] = P(592, BAR_Y); out.push(`<line x1="${a}" y1="${b}" x2="${c}" y2="${b}" stroke="${fg}" stroke-width="${W(15)}"/>`) }
+  for (const [x0, x1, h] of PLATES) {
+    rect(x0, BAR_Y - h / 2, x1, BAR_Y + h / 2, fg)
+    rect(756 - x1, BAR_Y - h / 2, 756 - x0, BAR_Y + h / 2, fg)
+  }
+  out.push(`<polygon points="${NIB.map(q => P(...q).join(',')).join(' ')}" fill="${nib}"/>`)
+  rect(379.3, 340, 384.7, 522, bg)   // the slit
+  { const [a, b] = P(382.04, 546); out.push(`<circle cx="${a}" cy="${b}" r="${W(27.1)}" fill="${hole}"/>`) }
+  return out
+}
+
+/** A plain variant's whole icon as SVG: its background and the mark in its colours. */
+export const markSvg = v => `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 512 512">
+  <!-- Retake Gym app icon "${v.id}", written by scripts/app-icons.mjs. -->
+  <rect width="512" height="512" fill="${v.bg}"/>
+${markShapes(v).map(e => '  ' + e).join('\n')}
+</svg>
+`
+
+/** One icon `size` px square, opaque, or cut to a circle with alpha at the edge (`round`). */
+export function draw(v, size, { round = false } = {}) {
+  return drawArt(v.art ? readFileSync(join(ROOT, v.art), 'utf8') : markSvg(v), size, { round })
+}
+
+/** One flat colour, `size` px square: the default adaptive icon's background layer. */
+function solid(hex, size) {
+  const c = rgb(hex), out = Buffer.alloc(size * size * 3)
+  for (let i = 0; i < size * size; i++) out.set(c, i * 3)
+  return png(size, size, out, 3)
 }
 
 const rgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16))
-
-/** One icon `size` px square: the background, the glyph on it, optionally cut to a circle. */
-export function draw(v, size, { round = false, rects = glyph() } = {}) {
-  if (v.art) return drawArt(readFileSync(join(ROOT, v.art), 'utf8'), size, { round })
-  const k = size <= 256 ? 8 : 4
-  const bg = rgb(v.bg), fg = rgb(v.fg)
-  const ch = round ? 4 : 3
-  const out = Buffer.alloc(size * size * ch)
-  const scale = 512 / size
-  // Per sample row, the glyph's spans across it: the inner loop then only compares numbers.
-  const spans = []
-  for (let s = 0; s < size * k; s++) {
-    const gy = (s + 0.5) / k * scale
-    spans.push(rects.filter(([, ry, , rh]) => gy >= ry && gy < ry + rh).map(([rx, , rw]) => [rx, rx + rw]))
-  }
-  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
-    let inside = 0, on = 0
-    for (let sy = 0; sy < k; sy++) {
-      const py = y + (sy + 0.5) / k
-      const row = spans[y * k + sy]
-      for (let sx = 0; sx < k; sx++) {
-        const px = x + (sx + 0.5) / k
-        if (round) {
-          const dx = px - size / 2, dy = py - size / 2
-          if (dx * dx + dy * dy > (size / 2) * (size / 2)) continue
-        }
-        inside++
-        const gx = px * scale
-        for (const [a, b] of row) if (gx >= a && gx < b) { on++; break }
-      }
-    }
-    const o = (y * size + x) * ch
-    const a = inside ? on / inside : 0
-    for (let c = 0; c < 3; c++) out[o + c] = Math.round(bg[c] + (fg[c] - bg[c]) * a)
-    if (round) out[o + 3] = Math.round(255 * inside / (k * k))
-  }
-  return png(size, size, out, ch)
-}
 
 // --- the hand-made icons: a renderer for the little SVG they are allowed to use ---
 // Painted back to front like SVG: each sample takes the colour of the topmost shape covering it.
@@ -217,15 +229,6 @@ export function pngInfo(buf) {
   return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20), alpha: buf[25] === 6 || buf[25] === 4 }
 }
 
-const svgOf = (v, rects) => `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 512 512">
-  <!-- openGym app icon "${v.id}", written by scripts/app-icons.mjs (the glyph of resources/icon.svg). -->
-  <rect width="512" height="512" fill="${v.bg}"/>
-  <g fill="${v.fg}">
-${rects.map(([x, y, w, h]) => `    <rect x="${x}" y="${y}" width="${w}" height="${h}"/>`).join('\n')}
-  </g>
-</svg>
-`
-
 // The same layers as the default icon's (mipmap-anydpi-v26/ic_launcher.xml): the whole square icon
 // as the foreground, inset to the 72 dp the launcher's mask shows, so every variant sits exactly
 // where the original does. The colour behind it only shows where a launcher moves the layers.
@@ -256,20 +259,34 @@ const iosContents = `{
 `
 
 /** Every file this script owns, as [path relative to frontend/, () => contents]: drawn on demand. */
-export function files(rects = glyph()) {
+export function files() {
   const out = []
   const colors = []
   for (const v of APP_ICON_VARIANTS) {
-    out.push([`public/app-icons/${v.id}.png`, () => draw(v, PREVIEW, { rects })])
-    if (v.id === 'default') continue
-    if (!v.art) out.push([`resources/icons/${v.id}.svg`, () => svgOf(v, rects)])
+    out.push([`public/app-icons/${v.id}.png`, () => draw(v, PREVIEW)])
+    if (v.id === 'default') {
+      // The primary icon everywhere: PWA, iOS AppIcon, Android launcher (adaptive layers in
+      // mipmap-anydpi-v26/ic_launcher.xml, both inset like the variants').
+      out.push(['resources/icon.svg', () => markSvg(v)])
+      out.push(['public/icon-512.png', () => draw(v, 512)])
+      out.push(['public/icon-180.png', () => draw(v, 180)])
+      out.push(['ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png', () => draw(v, IOS_SIZE)])
+      for (const [dpi, f] of Object.entries(DENSITIES)) {
+        out.push([`${RES}/mipmap-${dpi}/ic_launcher.png`, () => draw(v, Math.round(48 * f))])
+        out.push([`${RES}/mipmap-${dpi}/ic_launcher_round.png`, () => draw(v, Math.round(48 * f), { round: true })])
+        out.push([`${RES}/mipmap-${dpi}/ic_launcher_foreground.png`, () => draw(v, Math.round(108 * f))])
+        out.push([`${RES}/mipmap-${dpi}/ic_launcher_background.png`, () => solid(v.bg, Math.round(108 * f))])
+      }
+      continue
+    }
+    if (!v.art) out.push([`resources/icons/${v.id}.svg`, () => markSvg(v)])
     const set = `ios/App/App/Assets.xcassets/${v.ios}.appiconset`
     out.push([`${set}/Contents.json`, () => iosContents])
-    out.push([`${set}/icon-1024.png`, () => draw(v, IOS_SIZE, { rects })])
+    out.push([`${set}/icon-1024.png`, () => draw(v, IOS_SIZE)])
     for (const [dpi, f] of Object.entries(DENSITIES)) {
-      out.push([`${RES}/mipmap-${dpi}/ic_launcher_${v.id}.png`, () => draw(v, Math.round(48 * f), { rects })])
-      out.push([`${RES}/mipmap-${dpi}/ic_launcher_${v.id}_round.png`, () => draw(v, Math.round(48 * f), { rects, round: true })])
-      out.push([`${RES}/mipmap-${dpi}/ic_launcher_${v.id}_foreground.png`, () => draw(v, Math.round(108 * f), { rects })])
+      out.push([`${RES}/mipmap-${dpi}/ic_launcher_${v.id}.png`, () => draw(v, Math.round(48 * f))])
+      out.push([`${RES}/mipmap-${dpi}/ic_launcher_${v.id}_round.png`, () => draw(v, Math.round(48 * f), { round: true })])
+      out.push([`${RES}/mipmap-${dpi}/ic_launcher_${v.id}_foreground.png`, () => draw(v, Math.round(108 * f))])
     }
     out.push([`${RES}/mipmap-anydpi-v26/ic_launcher_${v.id}.xml`, () => adaptive(v.id)])
     out.push([`${RES}/mipmap-anydpi-v26/ic_launcher_${v.id}_round.xml`, () => adaptive(v.id)])

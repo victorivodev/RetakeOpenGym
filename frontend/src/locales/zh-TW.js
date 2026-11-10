@@ -1646,6 +1646,7 @@ export default {
   'Barcode': '條碼',
   'Delete weigh-in': '刪除體重紀錄',
   'Green': '綠色',
+  'Gold': '金色',
   'Blue': '藍色',
   'Orange': '橘色',
   'Purple': '紫色',

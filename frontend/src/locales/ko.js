@@ -1662,6 +1662,7 @@ export default {
   'Barcode': '바코드',
   'Delete weigh-in': '체중 기록 삭제',
   'Green': '초록',
+  'Gold': '골드',
   'Blue': '파랑',
   'Orange': '주황',
   'Purple': '보라',

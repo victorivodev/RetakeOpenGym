@@ -1662,6 +1662,7 @@ export default {
   'Barcode': 'Kod kreskowy',
   'Delete weigh-in': 'Usuń ważenie',
   'Green': 'Zielony',
+  'Gold': 'Złoty',
   'Blue': 'Niebieski',
   'Orange': 'Pomarańczowy',
   'Purple': 'Fioletowy',
