@@ -4,6 +4,18 @@ Newest first. Each release is a `## vX.Y.Z (YYYY-MM-DD)` section, and the releas
 GitHub and GitLab are that section, word for word. New work goes under `## Unreleased` until the
 tag. Write it for the people using the app: what changed for them, short, no em dashes.
 
+## v1.4.5 (2026-11-10)
+
+**Retake Gym: entrar com e-mail e senha.** Acabou a chave de acesso e o código de pareamento. O
+app abre direto na tela de login: entre com o seu e-mail (ou @usuário) e a senha, ou crie a conta
+com nome, @usuário, e-mail, senha e o código de convite. Esqueceu a senha? Peça um código ao
+administrador e troque na própria tela de login.
+
+**Seu perfil.** Em Configurações, Conta: foto, nome e @usuário (único, para encontrar os amigos),
+além de senha e e-mail.
+
+**A cara da Retake.** O logo da Retake Gym na tela de login e o símbolo da Retake na abertura do app.
+
 ## v1.4.4 (2026-11-03)
 
 **Modules: as much app as you want.** Settings → Modules switches whole parts of openGym on and
