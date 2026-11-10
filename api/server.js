@@ -14,6 +14,7 @@ import webpush from 'web-push';
 import * as coachConfig from './coach/config.js';
 import * as coachJobs from './coach/jobs.js';
 import { coachRoutes } from './coach/routes.js';
+import * as mealAI from './meals/analyze.js';
 import { startCadence } from './coach/cadence.js';
 import { startWarmup } from './coach/warmup.js';
 import { dayReminderPush, nudgePush, restTimerPush, testPush } from './push-messages.js';
@@ -48,7 +49,7 @@ const PORT = +(process.env.PORT || 3000);
 const DATA = process.env.DATA_DIR || '/data';
 const RP_ID = process.env.RP_ID || 'localhost';
 const ORIGIN = process.env.ORIGIN || 'http://localhost:8080';
-const RP_NAME = process.env.RP_NAME || 'openGym';
+const RP_NAME = process.env.RP_NAME || 'Retake Gym';
 // Admin dashboard (issue): admins are matched by uid (or the admin flag FIRST_USER_ADMIN sets);
 // INVITE_ONLY gates new signups behind a code the admin generates. Off by default, so a fresh
 // self-hosted instance stays open.
@@ -2113,6 +2114,8 @@ const routes = {
       // block is how the app knows this server does not take photos and videos at all.
       ...(MEDIA_ON ? { media: mediaConfig(MEDIA_LIMITS) } : {}),
       ...(readSession(req) ? { coach: coachConfig.publicConfig() } : {}),
+      // Retake Gym: whether this server analyses meal photos and descriptions (ANTHROPIC_API_KEY set).
+      ...(readSession(req) && mealAI.isEnabled() ? { meal_ai: true } : {}),
       // Which integrations this server offers (only to a session, like the Coach block). Absent
       // with INTEGRATIONS unset, which is how the app knows to show the server cards as off.
       ...(readSession(req) && integrations.publicConfig() ? { integrations: integrations.publicConfig() } : {})
@@ -2967,6 +2970,21 @@ const routes = {
     auditCount = 0;
     audit(req, 'admin.audit.clear', { user: admin });
     json(res, 200, { ok: true });
+  },
+
+  /* ---------- Retake Gym: AI meal logging ---------- */
+  // A photo and/or a description in, the foods with portions and macros out (meals/analyze.js).
+  // Nothing is stored here: the app shows the answer for review and saves the meal in its state.
+  'POST /api/meals/analyze': async (req, res) => {
+    const user = readSession(req);
+    if (!user) return json(res, 401, { error: 'not signed in' });
+    if (!mealAI.isEnabled()) return json(res, 503, { error: 'meal AI is not set up on this server', code: 'off' });
+    const parsed = mealAI.parseRequest(await readBody(req));
+    if (parsed.error) return json(res, 400, { error: parsed.error, code: 'invalid' });
+    if (!mealAI.takeQuota(user.id)) return json(res, 429, { error: 'daily limit of meal analyses reached', code: 'cap' });
+    const out = await mealAI.analyzeMeal(parsed);
+    if (!out.ok) return json(res, out.status, { error: out.error });
+    json(res, 200, out.meal);
   },
 
   /* ---------- AI Coach ---------- */
