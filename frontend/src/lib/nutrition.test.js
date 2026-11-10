@@ -91,3 +91,35 @@ describe('adaptiveTdee', () => {
     expect(r.trendKgPerWeek).toBe(-0.5)
   })
 })
+
+import { mealsList, latestWeightKg, targetsFor, waterTarget, dailyIntakes } from './nutrition.js'
+
+describe('diet state', () => {
+  const S = {
+    unit: 'kg', body: 'male',
+    bodyweight: [{ d: '2026-11-01', w: 82 }, { d: '2026-11-09', w: 80 }],
+    diet: { heightCm: 180, birthYear: 1996, activity: 'moderate', goal: 'maintain' },
+    meals: {
+      a: { id: 'a', date: '2026-11-10', slot: 'lunch', at: 2, items: [{ kcal: 500 }] },
+      b: { _ts: 3, gone: true },
+      c: { id: 'c', date: '2026-11-10', slot: 'breakfast', at: 1, items: [{ kcal: 300 }] }
+    }
+  }
+  it('lists live meals in order and skips deleted ones', () => {
+    expect(mealsList(S.meals).map(m => m.id)).toEqual(['c', 'a'])
+  })
+  it('reads the weight from the latest weigh-in, in kg', () => {
+    expect(latestWeightKg(S)).toBe(80)
+    expect(latestWeightKg({ unit: 'lb', bodyweight: [{ d: '2026-11-01', w: 200 }] })).toBe(90.7)
+  })
+  it('computes targets from the profile and the weigh-in', () => {
+    const tg = targetsFor(S, new Date('2026-11-10T12:00:00'))
+    expect(tg.bmr).toBe(1780)
+    expect(targetsFor({ ...S, diet: null })).toBeNull()
+  })
+  it('water and intakes', () => {
+    expect(waterTarget(80)).toBe(2800)
+    expect(waterTarget(null)).toBe(2000)
+    expect(dailyIntakes(S.meals, 7, new Date('2026-11-10T20:00:00Z'))).toEqual([{ date: '2026-11-10', kcal: 800 }])
+  })
+})

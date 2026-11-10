@@ -167,3 +167,49 @@ export function adaptiveTdee(intakes = [], weights = []) {
     trendKgPerWeek: r1(slopePerDay * 7 * 10) / 10
   }
 }
+
+/* ---------- the diet state (S.diet, S.meals, S.water) ----------
+ * S.diet:  { sex, heightCm, birthYear, activity, goal, ratePerWeekKg } or null
+ * S.meals: { [id]: meal with its own `_ts` } — a deleted meal stays as { _ts, gone: true } so the
+ *          deletion syncs (lib/sync-merge.js STAMPED_MAPS)
+ * S.water: { [date]: { ml, _ts } }
+ */
+
+/** The live meals, oldest first. */
+export function mealsList(meals) {
+  if (!meals || typeof meals !== 'object') return []
+  return Object.values(meals)
+    .filter(m => m && !m.gone && typeof m.date === 'string' && Array.isArray(m.items))
+    .sort((a, b) => (a.date === b.date ? (a.at || 0) - (b.at || 0) : a.date < b.date ? -1 : 1))
+}
+
+/** Body weight in kg from the latest weigh-in (S.bodyweight in S.unit), or null. */
+export function latestWeightKg(S) {
+  const list = Array.isArray(S?.bodyweight) ? S.bodyweight : []
+  const last = list.filter(e => e && e.w > 0).sort((a, b) => (a.d < b.d ? -1 : 1)).at(-1)
+  if (!last) return null
+  return S.unit === 'lb' ? r1(last.w * 0.45359237) : last.w
+}
+
+/** The targets for the profile in S, or null when something needed is missing. */
+export function targetsFor(S, now = new Date()) {
+  const d = S?.diet
+  const weightKg = latestWeightKg(S) ?? d?.weightKg
+  if (!d || !(weightKg > 0)) return null
+  return dailyTargets({
+    sex: d.sex || (S.body === 'female' ? 'female' : 'male'),
+    weightKg, heightCm: d.heightCm, ageYears: d.birthYear ? now.getFullYear() - d.birthYear : null,
+    activity: d.activity, goal: d.goal, ratePerWeekKg: d.ratePerWeekKg
+  })
+}
+
+/** Daily water target in ml: 35 ml per kg, 2 L when the weight is unknown. */
+export const waterTarget = weightKg => (weightKg > 0 ? Math.round((weightKg * 35) / 50) * 50 : 2000)
+
+/** Calories eaten per day over the last `days` days that have a meal logged: [{ date, kcal }]. */
+export function dailyIntakes(meals, days = 28, today = new Date()) {
+  const from = new Date(today.getTime() - days * 86400000).toISOString().slice(0, 10)
+  const by = {}
+  for (const m of mealsList(meals)) if (m.date >= from) by[m.date] = (by[m.date] || 0) + sumMacros(m.items).kcal
+  return Object.entries(by).map(([date, kcal]) => ({ date, kcal: Math.round(kcal) }))
+}

@@ -19,6 +19,9 @@ const P = {
   house: <path d="M3.5 10.7 12 3.8l8.5 6.9M5.9 9.4V19a1.4 1.4 0 0 0 1.4 1.4h9.4A1.4 1.4 0 0 0 18.1 19V9.4" />,
   calendar: <><rect x="3.4" y="5.2" width="17.2" height="15.4" rx="3.2" /><path d="M8.2 3.4v3.4M15.8 3.4v3.4M3.4 10.2h17.2" /></>,
   chart: <path d="M4.5 20.2V13M9.5 20.2V6.4M14.5 20.2v-5.1M19.5 20.2V9.6" />,
+  // Retake Gym: the Diet tab. An apple with its stalk and leaf.
+  apple: <path d="M12 8c-1.3-1.2-3.3-1.6-4.9-.7C4.9 8.5 4.5 11.6 5.5 14.5c.9 2.6 2.7 5.6 4.6 5.6.8 0 1.2-.4 1.9-.4s1.1.4 1.9.4c1.9 0 3.7-3 4.6-5.6 1-2.9.6-6-1.6-7.2-1.6-.9-3.6-.5-4.9.7ZM12 8c0-1.9.8-3.5 2.6-4.3M12.2 5.6c-1.4-.2-2.6-1.1-2.9-2.3" />,
+  drop: <path d="M12 3.6s-6 6.6-6 10.6a6 6 0 0 0 12 0c0-4-6-10.6-6-10.6Z" />,
   magnifier: <><circle cx="11" cy="11" r="7" /><path d="m20.5 20.5-4.4-4.4" /></>,
   // A real cog outline (8 teeth, generated on a circle) — an earlier version drew
   // radial rays and was indistinguishable from `sun` at tab-bar size.

@@ -77,6 +77,7 @@ function lazyView(load) {
 const Admin = lazyView(() => import('./views/Admin.jsx'))
 const CoachChat = lazyView(() => import('./views/CoachChat.jsx'))
 const Measurements = lazyView(() => import('./views/Measurements.jsx'))
+const Diet = lazyView(() => import('./views/Diet.jsx'))
 const CoachIntake = lazyView(() => import('./views/CoachIntake.jsx'))
 const CoachSetup = lazyView(() => import('./views/CoachSetup.jsx'))
 const StructuralBalance = lazyView(() => import('./views/StructuralBalance.jsx'))
@@ -337,6 +338,7 @@ function Shell() {
           route falls through to the catch-all redirect below. The data stays where it is. */}
       {isOn(S, 'checkin') && <Route path="/checkin" element={<CheckIn />} />}
       <Route path="/plan" element={<Plan />} />
+      <Route path="/diet" element={<Diet />} />
       <Route path="/plan/r/:id" element={<RoutineEdit />} />
       <Route path="/plan/programmes" element={<Programmes />} />
       <Route path="/plan/prog/:id" element={<ProgrammeEdit />} />
