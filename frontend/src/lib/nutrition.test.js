@@ -24,11 +24,23 @@ describe('dailyTargets', () => {
     expect(t.kcal).toBe(Math.round(t.tdee / 10) * 10)
     expect(t.protein).toBe(128)
   })
-  it('lose takes a deficit but never goes under BMR', () => {
+  it('lose spreads the week over 6 diet days (one free meal) with a 10% margin', () => {
     const t = dailyTargets({ ...victor, goal: 'lose', ratePerWeekKg: 0.5 })
-    expect(t.kcal).toBe(Math.round((t.tdee - 550) / 10) * 10)
-    const fast = dailyTargets({ ...victor, activity: 'sedentary', goal: 'lose', ratePerWeekKg: 2 })
-    expect(fast.kcal).toBeGreaterThanOrEqual(fast.bmr - 10)
+    expect(t.dietDays).toBe(6)
+    expect(t.kcal).toBe(Math.round((t.tdee - 0.5 * 7700 / 6 * 1.1) / 10) * 10)
+    expect(t.limited).toBeUndefined()
+    const none = dailyTargets({ ...victor, goal: 'lose', ratePerWeekKg: 0.5, freeMealsPerWeek: 0 })
+    expect(none.dietDays).toBe(7)
+    expect(none.kcal).toBeGreaterThan(t.kcal)
+  })
+  it('lose never goes under the minimum, and says what pace is reachable', () => {
+    const fast = dailyTargets({ ...victor, activity: 'sedentary', goal: 'lose', ratePerWeekKg: 1 })
+    expect(fast.kcal).toBe(1500)
+    expect(fast.limited).toBe(true)
+    expect(fast.reachableRatePerWeekKg).toBeGreaterThan(0)
+    expect(fast.reachableRatePerWeekKg).toBeLessThan(1)
+    const small = dailyTargets({ sex: 'female', weightKg: 50, heightCm: 155, ageYears: 40, activity: 'sedentary', goal: 'lose', ratePerWeekKg: 1 })
+    expect(small.kcal).toBeGreaterThanOrEqual(1200)
   })
   it('gain adds a capped surplus', () => {
     const t = dailyTargets({ ...victor, goal: 'gain', ratePerWeekKg: 5 })

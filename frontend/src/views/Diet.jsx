@@ -6,7 +6,7 @@ import { useUI } from '../store/useUI.js'
 import { t } from '../lib/i18n.js'
 import { fmtDate, fmtNum, todayISO } from '../lib/format.js'
 import {
-  MEAL_SLOTS, ACTIVITY, GOALS, dayTotals, remaining, mealsList, targetsFor, latestWeightKg,
+  MEAL_SLOTS, ACTIVITY, GOALS, dailyTargets, dayTotals, remaining, mealsList, targetsFor, latestWeightKg,
   waterTarget, dailyIntakes, adaptiveTdee, sumMacros
 } from '../lib/nutrition.js'
 import Icon from '../components/Icon.jsx'
@@ -48,9 +48,15 @@ function DietGoals({ close }) {
     sex: d.sex || (S.body === 'female' ? 'female' : 'male'),
     heightCm: d.heightCm || null, birthYear: d.birthYear || null, weightKg: d.weightKg || null,
     activity: d.activity || 'moderate', goal: d.goal || 'maintain',
-    ratePerWeekKg: d.ratePerWeekKg ?? 0.5
+    ratePerWeekKg: d.ratePerWeekKg ?? 0.5, freeMealsPerWeek: d.freeMealsPerWeek ?? 1
   })
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  // The sum as it stands, so the numbers change while the form is filled in.
+  const preview = dailyTargets({
+    ...form, weightKg: knownKg ?? form.weightKg,
+    ageYears: form.birthYear ? new Date().getFullYear() - form.birthYear : null
+  })
+  const kc = v => fmtNum(Math.round(v)) + ' kcal'
   const save = () => {
     const year = new Date().getFullYear()
     if (!(form.heightCm >= 100 && form.heightCm <= 250)) { toast(t('Enter your height in cm')); return }
@@ -67,6 +73,8 @@ function DietGoals({ close }) {
         options={GOALS.map(g => ({ value: g, label: goalName(g) }))} />
       {(form.goal === 'lose' || form.goal === 'gain') && <SelectRow title={t('Pace')} value={form.ratePerWeekKg} onChange={v => set('ratePerWeekKg', v)}
         options={[0.25, 0.5, 0.75, 1].map(v => ({ value: v, label: t('{0} kg per week', fmtNum(v)) }))} />}
+      {form.goal === 'lose' && <SelectRow title={t('Free meals per week')} value={form.freeMealsPerWeek} onChange={v => set('freeMealsPerWeek', v)}
+        options={[0, 1, 2].map(v => ({ value: v, label: v ? fmtNum(v) : t('No free meal') }))} />}
       <SelectRow title={t('Activity level')} value={form.activity} onChange={v => set('activity', v)}
         options={Object.keys(ACTIVITY).map(a => ({ value: a, label: activityName(a) }))} />
       <SelectRow title={t('Sex')} value={form.sex} onChange={v => set('sex', v)}
@@ -78,6 +86,23 @@ function DietGoals({ close }) {
       {!knownKg && <div className="lrow"><span className="lrow-t">{t('Weight (kg)')}</span>
         <NumberField value={form.weightKg} nullable onChange={v => set('weightKg', v)} /></div>}
     </Section>
+    {preview && <>
+      <div style={{ height: 14 }} />
+      <Section>
+        <div className="lrow"><span className="lrow-t">{t('Basal metabolism')}</span><b>{kc(preview.bmr)}</b></div>
+        <div className="lrow"><span className="lrow-t">{t('Daily burn with activity')}</span><b>{kc(preview.tdee)}</b></div>
+        {preview.deficit != null && <div className="lrow"><span className="lrow-t">{t('Deficit on diet days')}</span><b>−{kc(preview.deficit)}</b></div>}
+        <div className="lrow"><span className="lrow-t">{t('Daily target')}</span><b style={{ color: 'var(--blue)' }}>{kc(preview.kcal)}</b></div>
+      </Section>
+      {preview.dietDays != null && <div className="muted small" style={{ marginTop: 8 }}>
+        {preview.dietDays < 7
+          ? t('Deficit spread over {0} diet days a week; on the free meal day you eat about your daily burn. Includes a 10% margin.', preview.dietDays)
+          : t('Deficit spread over the 7 days of the week. Includes a 10% margin.')}
+      </div>}
+      {preview.limited && <div className="small" style={{ marginTop: 8, color: 'var(--orange)' }}>
+        {t('At this pace the target would fall below the safe minimum ({0}). The most you can lose safely is about {1} kg per week.', kc(preview.kcal), fmtNum(preview.reachableRatePerWeekKg))}
+      </div>}
+    </>}
     <div style={{ height: 14 }} />
     <Button variant="primary" onClick={save}>{t('Save')}</Button>
   </>

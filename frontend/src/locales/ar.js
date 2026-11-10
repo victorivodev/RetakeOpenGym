@@ -3777,4 +3777,13 @@ export default {
   "The AI could not analyse this. Try another photo or describe the meal.": "The AI could not analyse this. Try another photo or describe the meal.",
   "That photo is too large.": "That photo is too large.",
   "The meal AI could not be reached. Try again or add the food by hand.": "The meal AI could not be reached. Try again or add the food by hand.",
+  "Free meals per week": "Free meals per week",
+  "No free meal": "No free meal",
+  "Basal metabolism": "Basal metabolism",
+  "Daily burn with activity": "Daily burn with activity",
+  "Deficit on diet days": "Deficit on diet days",
+  "Daily target": "Daily target",
+  "Deficit spread over {0} diet days a week; on the free meal day you eat about your daily burn. Includes a 10% margin.": "Deficit spread over {0} diet days a week; on the free meal day you eat about your daily burn. Includes a 10% margin.",
+  "Deficit spread over the 7 days of the week. Includes a 10% margin.": "Deficit spread over the 7 days of the week. Includes a 10% margin.",
+  "At this pace the target would fall below the safe minimum ({0}). The most you can lose safely is about {1} kg per week.": "At this pace the target would fall below the safe minimum ({0}). The most you can lose safely is about {1} kg per week.",
 }

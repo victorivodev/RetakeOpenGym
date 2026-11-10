@@ -2511,6 +2511,15 @@ export const PT_BR_OVERRIDES = {
   "The AI could not analyse this. Try another photo or describe the meal.": "A IA não conseguiu analisar isso. Tente outra foto ou descreva a refeição.",
   "That photo is too large.": "Essa foto é grande demais.",
   "The meal AI could not be reached. Try again or add the food by hand.": "Não foi possível falar com a IA de refeições. Tente de novo ou adicione os alimentos manualmente.",
+  "Free meals per week": "Refeições livres por semana",
+  "No free meal": "Nenhuma",
+  "Basal metabolism": "Metabolismo basal",
+  "Daily burn with activity": "Gasto diário com atividade",
+  "Deficit on diet days": "Déficit nos dias de dieta",
+  "Daily target": "Meta diária",
+  "Deficit spread over {0} diet days a week; on the free meal day you eat about your daily burn. Includes a 10% margin.": "Déficit dividido em {0} dias de dieta por semana; no dia da refeição livre você come perto do seu gasto diário. Já inclui 10% de folga.",
+  "Deficit spread over the 7 days of the week. Includes a 10% margin.": "Déficit dividido nos 7 dias da semana. Já inclui 10% de folga.",
+  "At this pace the target would fall below the safe minimum ({0}). The most you can lose safely is about {1} kg per week.": "Nesse ritmo a meta ficaria abaixo do mínimo seguro ({0}). O máximo seguro para você é cerca de {1} kg por semana.",
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES }

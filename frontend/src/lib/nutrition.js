@@ -39,25 +39,45 @@ export function tdee(bmrKcal, activity = 'moderate') {
   return Math.round(bmrKcal * (ACTIVITY[activity] || ACTIVITY.moderate))
 }
 
+// The lowest daily intake a target is ever set to, whatever the pace asked for: below these the
+// weight lost is muscle as much as fat and the plan is not one anyone keeps up.
+export const MIN_KCAL = { male: 1500, female: 1200 }
+// Extra on top of the exact deficit, so a week with a little more than planned still reaches the
+// goal: estimates of intake and of burn are both a few percent off.
+export const DEFICIT_MARGIN = 0.1
+
 /**
  * Daily calorie and macro targets for a goal.
- *  - lose: deficit from the weekly rate (default 0.5 kg/week), capped at 25% of TDEE and never
- *    below BMR, so a fast rate cannot push intake to crash-diet levels;
+ *  - The burn: basal metabolic rate (Mifflin-St Jeor, its own formula for men and for women)
+ *    times the activity level gives the total daily expenditure (TDEE).
+ *  - lose: the week's deficit (pace × 7700 kcal per kg) is spread over the diet days only. With
+ *    one free meal a week (`freeMealsPerWeek`, default 1) that is 6 days, the free day eaten at
+ *    about maintenance; 10% margin on top. Never below MIN_KCAL (1500 men, 1200 women): a pace that would need
+ *    less is `limited`, and `reachableRatePerWeekKg` says what the floor still gives;
  *  - gain: surplus from the weekly rate (default 0.25 kg/week), capped at 15% of TDEE;
  *  - recomp: a small 10% deficit with high protein;
  *  - maintain: TDEE.
  * Protein per kg: 2.0 losing / recomp, 1.8 gaining, 1.6 maintaining. Fat 25% of energy (at least
  * 0.6 g/kg). Carbs take what is left.
  */
-export function dailyTargets({ sex, weightKg, heightCm, ageYears, activity = 'moderate', goal = 'maintain', ratePerWeekKg } = {}) {
+export function dailyTargets({ sex, weightKg, heightCm, ageYears, activity = 'moderate', goal = 'maintain', ratePerWeekKg, freeMealsPerWeek = 1 } = {}) {
   const b = bmr({ sex, weightKg, heightCm, ageYears })
   const t = tdee(b, activity)
   if (!t) return null
   let kcal = t
+  const extra = {}
   if (goal === 'lose') {
     const rate = Math.abs(ratePerWeekKg ?? 0.5)
-    const deficit = Math.min((rate * KCAL_PER_KG) / 7, t * 0.25)
-    kcal = Math.max(t - deficit, b)
+    const dietDays = 7 - Math.min(3, Math.max(0, Math.round(freeMealsPerWeek || 0)))
+    const deficit = (rate * KCAL_PER_KG) / dietDays * (1 + DEFICIT_MARGIN)
+    const floor = MIN_KCAL[sex === 'female' ? 'female' : 'male']
+    kcal = Math.max(t - deficit, floor)
+    extra.dietDays = dietDays
+    extra.deficit = Math.round(t - kcal)
+    if (t - deficit < floor) {
+      extra.limited = true
+      extra.reachableRatePerWeekKg = Math.max(0, Math.round(((t - floor) * dietDays) / (1 + DEFICIT_MARGIN) / KCAL_PER_KG * 100) / 100)
+    }
   } else if (goal === 'gain') {
     const rate = Math.abs(ratePerWeekKg ?? 0.25)
     kcal = t + Math.min((rate * KCAL_PER_KG) / 7, t * 0.15)
@@ -69,7 +89,7 @@ export function dailyTargets({ sex, weightKg, heightCm, ageYears, activity = 'mo
   const protein = Math.round(proteinPerKg * weightKg)
   const fat = Math.round(Math.max((kcal * 0.25) / KCAL_PER_G.fat, 0.6 * weightKg))
   const carbs = Math.max(0, Math.round((kcal - protein * KCAL_PER_G.protein - fat * KCAL_PER_G.fat) / KCAL_PER_G.carbs))
-  return { bmr: b, tdee: t, kcal, protein, carbs, fat, fiber: Math.round((kcal / 1000) * 14) }
+  return { bmr: b, tdee: t, kcal, protein, carbs, fat, fiber: Math.round((kcal / 1000) * 14), ...extra }
 }
 
 /** Sum of the macros of a list of items (or meals, whose items are flattened). */
@@ -199,7 +219,7 @@ export function targetsFor(S, now = new Date()) {
   return dailyTargets({
     sex: d.sex || (S.body === 'female' ? 'female' : 'male'),
     weightKg, heightCm: d.heightCm, ageYears: d.birthYear ? now.getFullYear() - d.birthYear : null,
-    activity: d.activity, goal: d.goal, ratePerWeekKg: d.ratePerWeekKg
+    activity: d.activity, goal: d.goal, ratePerWeekKg: d.ratePerWeekKg, freeMealsPerWeek: d.freeMealsPerWeek ?? 1
   })
 }
 
