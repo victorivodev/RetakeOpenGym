@@ -141,7 +141,7 @@ sincroniza com o servidor.
 **Atualizar para a versão mais nova do código:**
 
 ```bash
-cd ~/retakegym && git pull && sudo bash deploy/install.sh
+cd ~/retakegym && sudo git pull && sudo bash deploy/install.sh
 ```
 
 **Fazer backup** (contas, senhas, fotos de perfil e todos os dados ficam em `data/`):
