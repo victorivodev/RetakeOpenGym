@@ -59,6 +59,7 @@ jobs:
         working-directory: frontend
         env:
           VITE_APK_VARIANT: standard
+          VITE_DEFAULT_SERVER: https://gym.retaketecnologia.com.br
       - name: Unsigned APK
         run: ./gradlew --no-daemon assembleSideloadRelease
         working-directory: frontend/android
