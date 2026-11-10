@@ -63,6 +63,12 @@ What that means in practice:
 - The media may not be used to train, prompt or feed any AI system, or as a basis for generated
   images, animations or video.
 
+**Retake Gym** is a non-commercial fork of openGym: it is not sold, and it keeps the unmodified
+180 px media together with this notice, as the point above allows. Retake Tecnologia has also
+confirmed with Gym visual in writing (2026-11-10) that the media may be used in Retake Gym as long
+as the app is not sold. Selling the app, or any other commercial use, needs a licence from
+[gymvisual.com](https://gymvisual.com/) first.
+
 ## Exercise text (names, muscles, descriptions, instructions)
 
 The catalogue in `catalogue/` is openGym's own and is edited by its community (see
