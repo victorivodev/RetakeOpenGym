@@ -89,6 +89,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VER: ${{ steps.v.outputs.ver }}
+        # A release made by hand on GitHub (Releases -> Draft a new release, which also makes the
+        # tag) already exists when this runs: the files are added to it instead.
         run: |
+          if gh release view "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" out/* -R "$GITHUB_REPOSITORY" --clobber
+            exit 0
+          fi
           gh release create "$GITHUB_REF_NAME" out/* -R "$GITHUB_REPOSITORY" --title "Retake Gym $VER" \
             --notes "Android: baixe **RetakeGym-$VER.apk** no celular e abra para instalar (permita instalar de fontes desconhecidas quando o Android pedir). Quem já tem o app recebe o aviso de atualização em Configurações."
