@@ -6,7 +6,7 @@ import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { openLostAccess } from '../components/LostAccess.jsx'
 import { t } from '../lib/i18n.js'
-import Icon from '../components/Icon.jsx'
+import RetakeLogo from '../components/RetakeLogo.jsx'
 import { Button } from '../components/ui.jsx'
 import { askAddDeviceData } from '../sheets.jsx'
 import { normalizeServerUrl } from '../lib/remote.js'
@@ -159,8 +159,7 @@ export function PairCodeSheet({ close, initialUrl, again }) {
 export default function MobileOnboarding() {
   const { chooseLocalMode } = useStore()
   const head = <>
-    <div style={{ fontSize: 54, display: 'flex', justifyContent: 'center', color: 'var(--acc-ink)' }}><Icon name="dumbbell" /></div>
-    <h1 className="t-large" style={{ fontWeight: 700, margin: '10px 0 4px' }}>Retake Gym</h1>
+    <RetakeLogo />
   </>
   const wrap = { display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '78vh', textAlign: 'center' }
   // Retake Gym: the build names its server, so the first screen is simply the sign-in.
