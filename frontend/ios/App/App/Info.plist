@@ -23,7 +23,7 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>ch.opengym.app.widgets</string>
+			<string>br.com.retaketecnologia.gym.widgets</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>opengym</string>
@@ -91,14 +91,14 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Used to record the sound of a video you take of an exercise you add yourself or of a set you film.</string>
 	<key>BAAppGroupID</key>
-	<string>group.ch.opengym.app</string>
+	<string>group.br.com.retaketecnologia.gym</string>
 	<key>BAHasManagedAssetPacks</key>
 	<true/>
 	<key>BAUsesAppleHosting</key>
 	<true/>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
-		<string>ch.opengym.app.nudge-check</string>
+		<string>br.com.retaketecnologia.gym.nudge-check</string>
 	</array>
 	<!-- processing: as in Apple's iPhone workout sample ("Building a workout app for iPhone and
 	     iPad", WWDC25 322) for the iPhone's own workout session (#818, AirPods heart rate, iOS 26).

@@ -7,7 +7,7 @@ android {
         buildConfig = true
     }
     defaultConfig {
-        applicationId "ch.duartesantos.opengym"
+        applicationId "br.com.retaketecnologia.gym"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 31

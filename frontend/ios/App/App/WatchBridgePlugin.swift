@@ -54,7 +54,7 @@ public class WatchBridgePlugin: CAPPlugin, CAPBridgedPlugin, WCSessionDelegate {
         CAPPluginMethod(name: "dropClips", returnType: CAPPluginReturnPromise),
     ]
 
-    private let queue = DispatchQueue(label: "ch.opengym.watch-events")
+    private let queue = DispatchQueue(label: "br.com.retaketecnologia.gym.watch-events")
 
     override public func load() {
         guard WCSession.isSupported() else { return }
@@ -170,7 +170,7 @@ public class WatchBridgePlugin: CAPPlugin, CAPBridgedPlugin, WCSessionDelegate {
 
     /// The clips already on their way for each workout, by exercise.
     private var clipsSent: [String: Set<String>] = [:]
-    private let clipQueue = DispatchQueue(label: "ch.opengym.watch-clips", qos: .utility)
+    private let clipQueue = DispatchQueue(label: "br.com.retaketecnologia.gym.watch-clips", qos: .utility)
 
     @objc func sendClips(_ call: CAPPluginCall) {
         guard let wid = call.getString("wid"), WCSession.isSupported() else { call.resolve(["sent": 0]); return }
