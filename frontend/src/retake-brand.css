@@ -77,9 +77,23 @@ body {
 .meal-photo{position:relative;margin-bottom:10px}
 .meal-photo img{display:block;width:100%;max-height:220px;object-fit:cover;border-radius:var(--r)}
 .meal-photo .iconbtn{position:absolute;top:8px;inset-inline-end:8px;background:var(--surface-raised);color:var(--red)}
-.meal-item{padding:10px 0;border-bottom:var(--hair) solid var(--sep)}
-.meal-item-name{flex:1;min-width:0}
-.meal-item-nums{display:grid;grid-template-columns:1.3fr repeat(4,1fr);gap:6px;margin-top:8px}
-.meal-item-nums label{display:flex;flex-direction:column;gap:3px;font-size:var(--fs-caption);color:var(--label-2)}
-.meal-item-nums input{width:100%;min-width:0}
-.meal-total{padding:10px 0 14px;color:var(--label-2)}
+.meal-item{background:var(--surface-2);border-radius:14px;padding:10px 12px 12px;margin-bottom:10px}
+.meal-item-top{display:flex;align-items:center;gap:6px}
+.meal-item-name{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--label);font:inherit;font-weight:650;font-size:var(--fs-body);padding:6px 0}
+.meal-item-name::placeholder{color:var(--label-3);font-weight:500}
+.meal-item-del{color:var(--label-3);flex:none}
+.meal-item-del:hover{color:var(--red)}
+.meal-item-nums{display:grid;grid-template-columns:1.25fr repeat(4,1fr);gap:6px;margin-top:6px}
+.meal-num{display:flex;flex-direction:column;gap:2px;background:var(--surface-3);border-radius:10px;padding:6px 8px;min-width:0;cursor:text}
+.meal-num:focus-within{box-shadow:0 0 0 1.5px var(--acc) inset}
+.meal-num-l{font-size:11px;font-weight:700;letter-spacing:.02em;color:var(--label-2)}
+.meal-num-v{display:flex;align-items:baseline;gap:2px;min-width:0}
+.meal-num-v input{flex:1;min-width:0;width:100%;background:none;border:0;outline:0;padding:0;color:var(--label);font:inherit;font-weight:700;font-size:15px;font-variant-numeric:tabular-nums}
+.meal-num-v i{font-style:normal;font-size:11px;color:var(--label-3)}
+.meal-num-grams .meal-num-l{color:var(--label)}
+.meal-num-kcal .meal-num-l{color:var(--retake-gold)}
+.meal-num-p .meal-num-l{color:var(--retake-sky)}
+.meal-num-c .meal-num-l{color:#8fd694}
+.meal-num-f .meal-num-l{color:#ffb95f}
+.meal-item-warn{color:var(--orange);margin-top:8px}
+.meal-total{padding:4px 2px 14px;color:var(--label-2)}

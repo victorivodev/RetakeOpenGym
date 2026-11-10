@@ -44,21 +44,34 @@ export function shrinkPhoto(file, max = 1024) {
 
 function ItemRow({ item, onChange, onRemove }) {
   const low = item.confidence != null && item.confidence < 0.5
+  const field = (key, label, unit, tone) => <label className={'meal-num meal-num-' + tone}>
+    <span className="meal-num-l">{label}</span>
+    <span className="meal-num-v">
+      <NumberField value={item[key]} nullable onChange={v => onChange({ ...item, [key]: v || 0 })} />
+      <i>{unit}</i>
+    </span>
+  </label>
   return <div className="meal-item">
-    <div className="row between" style={{ gap: 8 }}>
-      <input className="input meal-item-name" value={item.name} maxLength={80} placeholder={t('Food')}
+    <div className="meal-item-top">
+      <input className="meal-item-name" value={item.name} maxLength={80} placeholder={t('Food')}
         onChange={e => onChange({ ...item, name: e.target.value })} />
-      <button className="iconbtn" style={{ color: 'var(--red)' }} onClick={onRemove} aria-label={t('Remove')}><Icon name="trash" /></button>
+      <button className="iconbtn meal-item-del" onClick={onRemove} aria-label={t('Remove')}><Icon name="trash" /></button>
     </div>
     <div className="meal-item-nums">
-      <label><span>{t('Grams')}</span><NumberField value={item.grams} nullable decimal={false}
-        onChange={g => onChange(item.grams > 0 && g > 0 ? scaleItem(item, g) : { ...item, grams: g || 0 })} /></label>
-      <label><span>kcal</span><NumberField value={item.kcal} nullable onChange={v => onChange({ ...item, kcal: v || 0 })} /></label>
-      <label><span>P</span><NumberField value={item.protein} nullable onChange={v => onChange({ ...item, protein: v || 0 })} /></label>
-      <label><span>C</span><NumberField value={item.carbs} nullable onChange={v => onChange({ ...item, carbs: v || 0 })} /></label>
-      <label><span>G</span><NumberField value={item.fat} nullable onChange={v => onChange({ ...item, fat: v || 0 })} /></label>
+      <label className="meal-num meal-num-grams">
+        <span className="meal-num-l">{t('Grams')}</span>
+        <span className="meal-num-v">
+          <NumberField value={item.grams} nullable decimal={false}
+            onChange={g => onChange(item.grams > 0 && g > 0 ? scaleItem(item, g) : { ...item, grams: g || 0 })} />
+          <i>g</i>
+        </span>
+      </label>
+      {field('kcal', 'kcal', '', 'kcal')}
+      {field('protein', 'P', 'g', 'p')}
+      {field('carbs', 'C', 'g', 'c')}
+      {field('fat', 'G', 'g', 'f')}
     </div>
-    {low && <div className="small" style={{ color: 'var(--orange)' }}>{t('Not sure about this one: check the portion.')}</div>}
+    {low && <div className="small meal-item-warn">{t('Not sure about this one: check the portion.')}</div>}
   </div>
 }
 
