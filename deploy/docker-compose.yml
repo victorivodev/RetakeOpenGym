@@ -1,0 +1,51 @@
+# Retake Gym on one VPS with automatic HTTPS. Used by deploy/install.sh; see docs/DEPLOY_PT.md.
+#
+# Builds our own images from this repository (never the upstream openGym ones) and puts Caddy in
+# front, which gets and renews the Let's Encrypt certificate for $DOMAIN by itself.
+name: retakegym
+
+services:
+  api:
+    image: retakegym-api:local
+    build:
+      context: ../api
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      - PORT=3000
+      - DATA_DIR=/data
+      - TRUST_PROXY=1
+    volumes:
+      - ../data:/data          # contas, passkeys e dados de todo mundo: FAÇA BACKUP desta pasta
+
+  web:
+    image: retakegym-web:local
+    build:
+      context: ..
+      dockerfile: web/Dockerfile
+    restart: unless-stopped
+    depends_on: [api]
+    environment:
+      - NGINX_PORT=80
+      - BACKEND=api
+      - PORT=3000
+      - RESOLVER=127.0.0.11
+      - MEDIA_UPLOAD_MAX=48m
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on: [web]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    env_file: ../.env
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data       # certificados
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

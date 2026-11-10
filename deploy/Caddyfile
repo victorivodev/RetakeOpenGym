@@ -1,0 +1,5 @@
+# DOMAIN comes from ../.env (written by install.sh).
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy web:80
+}
