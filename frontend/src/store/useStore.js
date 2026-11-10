@@ -1943,6 +1943,15 @@ export const useStore = create((set, get) => {
     // Redeems the pairing code shown in the browser (Settings → "Pair the mobile app") and
     // switches this device over to that account, same as signing in on the web does — the same
     // account pairing again merges what the phone kept (adoptProfile).
+    // Retake Gym: the profile's name, user name or photo changed (Settings → Profile). Only the
+    // fields the server sent back; nothing about whose data this is changes.
+    patchUser(u) {
+      const cur = get().user
+      if (!cur || !u || u.id !== cur.id) return
+      const next = { ...cur, name: u.name, username: u.username, avatar: u.avatar }
+      try { localStorage.setItem('gym_user', JSON.stringify(next)) } catch { /* storage full or blocked: the next boot asks /api/me */ }
+      set({ user: next })
+    },
     async connectToServer(url, code, ask) {
       const user = await connect(url, code)   // throws on a bad URL/expired code — caller shows it
       // The account first, the address after: a copy another account still owed is kept aside

@@ -6,7 +6,7 @@
 // server's RP_ID), so auth here is a short one-time code redeemed from an already signed-in
 // browser tab (Settings → "Pair the mobile app") for a bearer token — see api/server.js's
 // /api/pair/create + /api/pair/redeem.
-import { pairRedeem, setRemoteAuth } from './api.js'
+import { pairRedeem, appAuth, setRemoteAuth } from './api.js'
 import { loadRemoteFile, saveRemoteFile } from './mobile.js'
 import { clearCfAccess } from './cf-access.js'
 
@@ -50,10 +50,14 @@ export async function renewToken(remote, token) {
 
 // Redeems the pairing code, wires api.js at the resolved base, and persists the connection so
 // boot() can restore it on the next launch.
+// Retake Gym: `code` may instead be an account sign-in, { kind: 'login' | 'register' |
+// 'password-reset', body }, which signs in with the e-mail and password (api.js appAuth).
 export async function connect(rawUrl, code) {
   const base = normalizeServerUrl(rawUrl)
   if (!base) throw new Error('Enter a valid server address')
-  const { token, user } = await pairRedeem(base, String(code || '').trim())
+  const { token, user } = code && typeof code === 'object'
+    ? await appAuth(base, code.kind, code.body)
+    : await pairRedeem(base, String(code || '').trim())
   setRemoteAuth(base, token)
   await saveRemoteFile({ mode: 'remote', base, token, user })
   return user

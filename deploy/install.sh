@@ -61,10 +61,11 @@ ORIGIN=https://$DOMAIN
 RP_NAME=Retake Gym
 DEFAULT_LANG=pt-BR
 
-# O primeiro perfil criado vira admin. Depois disso só entra quem tiver convite
-# (gere os códigos em Configurações -> Painel de administração).
+# Login com e-mail e senha (sem chave de acesso e sem código de pareamento no celular).
+# O primeiro perfil criado vira admin. Para exigir convite no cadastro, troque INVITE_ONLY para 1.
+EMAIL_LOGIN=1
 FIRST_USER_ADMIN=1
-INVITE_ONLY=1
+INVITE_ONLY=0
 ALLOW_GUEST=0
 
 # IA das refeições
@@ -75,6 +76,14 @@ ENV
 else
   say "Mantendo o .env que já existe"
   grep -q '^DOMAIN=' .env || { echo "O .env não tem DOMAIN=. Adicione DOMAIN=seu.dominio e rode de novo."; exit 1; }
+  # Atualização para o login com e-mail e senha: feita uma vez só. Quem já tem EMAIL_LOGIN no
+  # .env (ligado ou desligado de propósito) não é mexido.
+  if ! grep -q '^EMAIL_LOGIN=' .env; then
+    say "Ligando o login com e-mail e senha"
+    printf '\n# Login com e-mail e senha (adicionado pelo install.sh em %s). Para exigir convite, INVITE_ONLY=1.\nEMAIL_LOGIN=1\n' "$(date -u +%F)" >> .env
+    sed -i 's/^INVITE_ONLY=1$/INVITE_ONLY=0/' .env
+    echo "Cadastro aberto com e-mail e senha (sem convite)."
+  fi
 fi
 mkdir -p data
 DOMAIN="$(grep '^DOMAIN=' .env | cut -d= -f2-)"
@@ -91,5 +100,7 @@ docker compose -f deploy/docker-compose.yml up -d --build --remove-orphans
 
 say "Pronto"
 echo "Abra https://$DOMAIN (o certificado HTTPS sai em até 1 minuto)."
-echo "Crie o seu perfil primeiro: ele vira o admin. Depois gere convites para os outros."
+echo "Crie a sua conta primeiro: ela vira o admin."
+echo "Já tinha perfil com chave de acesso? Defina e-mail e senha para ele com:"
+echo "  sudo docker compose -f deploy/docker-compose.yml exec api node set-login.js \"Seu nome\" --email voce@exemplo.com --username seunome"
 echo "Backup: sudo tar czf retakegym-backup-\$(date +%F).tgz -C $ROOT data .env"

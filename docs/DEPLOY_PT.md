@@ -95,9 +95,31 @@ de 5 a 10 minutos.
 ## 7. Primeiro acesso
 
 1. Abra `https://gym.retaketecnologia.com.br` (o seu endereço).
-2. Crie **o seu** perfil primeiro: o primeiro perfil vira o administrador.
-3. O servidor já vem fechado para convidados: só cria conta quem tiver um código de convite.
-   Gere os códigos em **Configurações → Painel de administração** e mande para quem você quiser.
+2. Toque em **Criar conta** e crie **a sua** primeiro (nome, @usuário, e-mail e senha): a primeira
+   conta vira o administrador.
+3. Depois é só mandar o link para quem você quiser: cada pessoa cria a própria conta com e-mail
+   e senha. Para exigir um código de convite no cadastro, troque `INVITE_ONLY=0` por
+   `INVITE_ONLY=1` no `.env` e rode o `install.sh` de novo; os códigos saem em
+   **Configurações → Painel de administração**.
+
+**Esqueceu a senha?** Quem esqueceu pede um código ao administrador (**Painel de administração →
+a pessoa → Redefinir senha**) e digita em **Esqueceu a senha?** na tela de login. Para a conta do
+próprio administrador, troque a senha direto no servidor:
+
+```bash
+cd ~/retakegym && sudo docker compose -f deploy/docker-compose.yml exec api node set-login.js "seu@email.com"
+```
+
+**Já tinha um perfil com chave de acesso (passkey)?** Dê e-mail, @usuário e senha a ele, sem
+perder nada:
+
+```bash
+cd ~/retakegym && sudo docker compose -f deploy/docker-compose.yml exec api node set-login.js "Seu nome" --email seu@email.com --username seunome
+```
+
+O comando pergunta a senha nova duas vezes (não aparece na tela). Depois disso, entre com o e-mail
+e a senha. Também dá para fazer pelo app: **Configurações → Conta → Senha** (confirma com a chave
+de acesso uma última vez) e depois **E-mail**.
 
 ## 8. Instalar no celular (sem loja)
 
@@ -109,6 +131,9 @@ inicial**).
 O app abre em tela cheia, com o ícone da Retake, e funciona offline; quando volta a ter internet,
 sincroniza com o servidor.
 
+**APK do Android:** a partir da versão com login por e-mail, o app abre direto na tela de login:
+é só entrar com o mesmo e-mail e senha do site, sem código de pareamento.
+
 ---
 
 ## Manutenção
@@ -116,10 +141,10 @@ sincroniza com o servidor.
 **Atualizar para a versão mais nova do código:**
 
 ```bash
-cd ~/retakegym && sudo bash deploy/install.sh
+cd ~/retakegym && git pull && sudo bash deploy/install.sh
 ```
 
-**Fazer backup** (contas, passkeys e todos os dados ficam em `data/`):
+**Fazer backup** (contas, senhas, fotos de perfil e todos os dados ficam em `data/`):
 
 ```bash
 cd ~/retakegym && sudo tar czf ~/retakegym-backup-$(date +%F).tgz data .env
@@ -143,8 +168,10 @@ cd ~/retakegym && sudo docker compose -f deploy/docker-compose.yml logs -f --tai
   (`ping gym.retaketecnologia.com.br`).
 - **Erro de certificado:** quase sempre é DNS ainda propagando, ou Cloudflare com a nuvem laranja.
   Espere alguns minutos e veja os logs do `caddy`.
-- **Não consigo criar a passkey:** passkeys exigem o endereço com `https://` exatamente igual ao
-  do `.env` (`RP_ID` e `ORIGIN`).
+- **"E-mail, nome de usuário ou senha errados" e a senha está certa:** confira se o `.env` tem
+  `EMAIL_LOGIN=1` (o `install.sh` coloca sozinho) e se a conta já tem senha (`set-login.js`).
+- **Muitas tentativas:** depois de 5 senhas erradas a conta espera um pouco antes de aceitar de
+  novo (1 minuto, dobrando a cada erro). Espere, ou troque a senha com `set-login.js`.
 - **A IA de refeições não aparece:** falta `GEMINI_API_KEY` no `.env`, ou a chave está errada
   (os logs do `api` mostram o erro).
 
@@ -152,6 +179,7 @@ cd ~/retakegym && sudo docker compose -f deploy/docker-compose.yml logs -f --tai
 
 - O código é público (licença AGPL), mas **os dados não**: ficam só nesta VPS, em `data/`.
 - A chave do Gemini e os segredos ficam só no `.env` do servidor, que nunca vai para o GitHub.
-- Todo acesso passa por HTTPS, e só entra quem tem perfil (convite) e passkey.
-- Como todo mundo chega pelo mesmo proxy, o limite de tentativas de login conta o servidor
-  inteiro junto. Para um grupo pequeno e fechado por convite isso não é problema.
+- Todo acesso passa por HTTPS. As senhas são guardadas só como hash (scrypt), nunca em texto.
+- Senha com no mínimo 10 caracteres; as óbvias ("senha123456"...) são recusadas.
+- Senhas erradas pausam a conta e o endereço de quem tenta, cada um com o seu limite: o Caddy
+  passa o IP real de cada visitante para a API, então um visitante não trava o login dos outros.

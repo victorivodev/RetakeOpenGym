@@ -12,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRoot } from 'react-dom/client'
 import { useUI } from '../store/useUI.js'
 import { _setLangState } from '../lib/i18n-core.js'
-import { ConnectSheet, CfAccessSheet, SHEET_SETTLE_MS } from './MobileOnboarding.jsx'
+import { ConnectSheet, PairCodeSheet, CfAccessSheet, SHEET_SETTLE_MS } from './MobileOnboarding.jsx'
 
 let root, host, sheet, savedVV
 const rect = (top, bottom) => () => ({ top, bottom, left: 0, right: 300, width: 300, height: bottom - top })
@@ -53,9 +53,19 @@ describe('the connect sheet and the iOS keyboard', () => {
 
   it('pairing again focuses the code field, also only once the sheet has landed', () => {
     vi.useFakeTimers()
-    act(() => root.render(<ConnectSheet close={() => {}} initialUrl="https://gym.example.com" again />))
+    // Retake Gym: with the server known the sheet opens on e-mail sign-in; the code form is the
+    // one behind "Use a pairing code instead".
+    act(() => root.render(<PairCodeSheet close={() => {}} initialUrl="https://gym.example.com" again />))
     act(() => { vi.advanceTimersByTime(SHEET_SETTLE_MS) })
     expect(document.activeElement).toBe(sheet.querySelectorAll('input')[1])
+  })
+
+  it('with the server known, opens on e-mail sign-in, the pairing code one tap away', () => {
+    act(() => root.render(<ConnectSheet close={() => {}} initialUrl="https://gym.example.com" again />))
+    expect(sheet.querySelector('input[name="username"]')).not.toBeNull()
+    const pair = [...sheet.querySelectorAll('button')].find(b => b.textContent === 'Use a pairing code instead')
+    act(() => pair.click())
+    expect(sheet.querySelector('input[placeholder="Pairing code"]')).not.toBeNull()
   })
 
   it('stands on the keyboard and scrolls the code field above it, without scrolling the page', async () => {

@@ -71,11 +71,20 @@ test('every tag the spec uses is one the docs generator renders', () => {
 test('every error code the e-mail and password signup routes return is in their spec entry', () => {
   const server = read(path.join(API, 'server.js'));
   const handler = key => {
+    // A route that hands over to a shared function (Retake Gym: the cookie and the app's token
+    // sign-up share passwordSignUp) is read from that function.
+    const delegated = new RegExp(`  '${key}': \\(req, res\\) => (\\w+)\\(`).exec(server);
+    if (delegated) {
+      const at = server.indexOf(`async function ${delegated[1]}(`);
+      assert.ok(at >= 0, delegated[1]);
+      return server.slice(at, server.indexOf('\n}\n', at));
+    }
     const start = server.indexOf(`  '${key}': async`);
     assert.ok(start >= 0, key);
     const next = server.slice(start + 1).search(/\n {2}'(GET|POST|PUT|DELETE) \//);
     return server.slice(start, next < 0 ? undefined : start + 1 + next);
   };
+  const usernameCodes = Object.fromEntries([...server.slice(server.indexOf('const USERNAME_ERRORS'), server.indexOf('};', server.indexOf('const USERNAME_ERRORS'))).matchAll(/^\s{2}(\w+): \{ error: '[^']*', code: '([^']+)' \}/gm)].map(m => [m[1], m[2]]));
   const emailCodes = Object.fromEntries([...server.matchAll(/^\s{2}(\w+): \{ error: '[^']*', code: '([^']+)' \}/gm)].map(m => [m[1], m[2]]));
   const operation = (p, method) => {
     const from = spec.indexOf(`\n  ${p}:\n`);
@@ -100,7 +109,8 @@ test('every error code the e-mail and password signup routes return is in their 
     const src = handler(key);
     const codes = new Set([
       ...[...src.matchAll(/code: '([^']+)'/g)].map(m => m[1]),
-      ...[...src.matchAll(/EMAIL_ERRORS\.(\w+)/g)].map(m => emailCodes[m[1]])
+      ...[...src.matchAll(/EMAIL_ERRORS\.(\w+)/g)].map(m => emailCodes[m[1]]),
+      ...[...src.matchAll(/USERNAME_ERRORS\.(\w+)/g)].map(m => usernameCodes[m[1]])
     ]);
     assert.ok(codes.size > 1, key);
     const doc = operation(p, method);
