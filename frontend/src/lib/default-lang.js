@@ -7,7 +7,8 @@
 // they are — including every existing profile whose `lang` is the old default.
 //
 // For a marked copy, the instance's DEFAULT_LANG (GET /api/config `default_lang`) comes first,
-// then the first of the browser's languages this app speaks, then English.
+// then Brazilian Portuguese: Retake Gym starts in pt-BR whatever the browser's language, and
+// anyone can pick another one in Settings → Language.
 //
 // That answer is worked out where the language is used (effectiveLang) and never written back
 // into the state. It depends on the device — two phones of one profile can have browsers in two
@@ -17,6 +18,9 @@
 import { LANGS } from './i18n-core.js'
 
 const KEYS = Object.keys(LANGS)
+// A build can start in another language with VITE_DEFAULT_LANG (the iOS UI tests build in English,
+// because they find buttons by their English labels).
+export const RETAKE_DEFAULT_LANG = matchLocale(import.meta.env?.VITE_DEFAULT_LANG) || 'pt-BR'
 
 /** A language tag ('pt-BR', 'pt_br', 'de-AT', 'en-US') as one of LANGS' keys, or null. */
 export function matchLocale(tag) {
@@ -35,9 +39,7 @@ export function matchLocale(tag) {
 /** The language a copy that never chose one should be in, or null for a copy that chose. */
 export function autoLang(S, config, navLangs = []) {
   if (!S || S.langAuto !== true) return null
-  return matchLocale(config?.default_lang)
-    || (navLangs || []).map(matchLocale).find(Boolean)
-    || 'en'
+  return matchLocale(config?.default_lang) || RETAKE_DEFAULT_LANG
 }
 
 // The instance's DEFAULT_LANG as last seen on this device, so a boot does not show the browser's

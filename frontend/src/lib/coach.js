@@ -14,7 +14,7 @@
 
 import { EXIDX, canonicalExId } from './exercises.js'
 import { modeOf, isBw, isPerSide, cleanupSg } from './history.js'
-import { uid, todayISO, DAYN } from './format.js'
+import { uid, todayISO, DAYN, exerciseNameText } from './format.js'
 import { mergePlan } from './plan-share.js'
 import { deleteRoutine } from './routines.js'
 import { POLICIES, POLICY_NAME, POLICY_DESC } from './progression.js'
@@ -687,7 +687,7 @@ export function recordDebrief(s, proposal) {
 
 /* ============================ display helpers ============================ */
 
-export const exName = id => EXIDX[id]?.n || t('Unknown exercise')
+export const exName = id => (EXIDX[id] ? exerciseNameText(EXIDX[id]) : t('Unknown exercise'))
 // Catalogue names are lower-case; a title reads better with each word capitalised, and doing it
 // here rather than with CSS keeps a German sentence around the name from being Title Cased too.
 const cap = s => String(s || '').replace(/(^|\s)(\p{L})/gu, (m, sp, ch) => sp + ch.toUpperCase())

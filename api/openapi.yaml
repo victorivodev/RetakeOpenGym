@@ -164,6 +164,10 @@ tags:
     description: Web Push (VAPID) subscriptions, rest-timer and test pushes
   - name: activity
     description: Live-workout presence heartbeat
+  - name: meals
+    description: >-
+      Retake Gym's AI meal logging, with Google Gemini (`GEMINI_API_KEY`) or Claude
+      (`ANTHROPIC_API_KEY`). Every route here answers 503 `off` while the server has neither.
   - name: admin
     description: Admin dashboard. Requires an admin session (`ADMIN_UIDS` or `admin:true`)
   - name: media
@@ -3339,6 +3343,68 @@ paths:
         '409': { $ref: '#/components/responses/CoachRefused' }
         '429': { $ref: '#/components/responses/CoachRefused' }
         '503': { $ref: '#/components/responses/CoachOff' }
+
+  /api/meals/analyze:
+    post:
+      tags: [meals]
+      operationId: postMealsAnalyze
+      summary: Estimate the foods and macros of a meal
+      description: |
+        Sends a photo of a meal and/or a short description to the configured model (Gemini or Claude) and answers with the foods
+        it sees, an estimated portion of each and that portion's energy and macros. Nothing is
+        stored: the app shows the answer for review and saves the meal in the user's state.
+        Limited per user per day (`MEAL_AI_DAILY_CAP`, default 40).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  description: A `data:image/jpeg|png|webp|gif;base64,...` URL, at most 3 MB decoded.
+                text:
+                  type: string
+                  description: What was eaten, in the user's words. Cut at 1000 characters.
+                lang:
+                  type: string
+                  pattern: '^[A-Za-z]{2,3}([-_][A-Za-z0-9]{2,8})?$'
+                  description: The language the names and notes come back in (default pt-BR).
+      responses:
+        '200':
+          description: The analysis.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  title: { type: string }
+                  notes: { type: string }
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name: { type: string }
+                        grams: { type: number }
+                        kcal: { type: number }
+                        protein: { type: number }
+                        carbs: { type: number }
+                        fat: { type: number }
+                        fiber: { type: number }
+                        confidence: { type: number, minimum: 0, maximum: 1 }
+        '400':
+          description: Neither a photo nor a description, or an image that is not accepted (`code` is `invalid`).
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422':
+          description: The model declined to analyse the input.
+        '429':
+          description: The daily limit was reached (`code` is `cap`) or the model is busy.
+        '502':
+          description: The model could not be reached or answered in an unexpected way.
+        '503':
+          description: Meal AI is not set up on this server (`code` is `off`).
 
   /api/coach/ask:
     post:

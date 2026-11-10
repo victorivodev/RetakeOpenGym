@@ -99,7 +99,7 @@ const PLAN = [
 const madeEx = c => (c.S?.customEx?.length || 0) > (c.entry.customEx || 0)
 const CUSTOM = [
   { id: 'c-intro', route: null, anchor: null },
-  { id: 'c-go', route: null, anchor: 'tab-library', go: '/library' },
+  { id: 'c-go', route: '/plan', anchor: 'tab-library', go: '/library' },
   { id: 'c-new', route: '/library', anchor: 'lib-new', open: true, until: c => c.sheets > 0 },
   { id: 'c-name', route: '/library', anchor: 'cx-name', open: true, sheet: true, lost: c => !c.sheets, back: 'c-new' },
   { id: 'c-bp', route: '/library', anchor: 'cx-bp', open: true, sheet: true, lost: c => !c.sheets, back: 'c-new' },

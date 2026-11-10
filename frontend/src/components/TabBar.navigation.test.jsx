@@ -37,7 +37,7 @@ const go = async to => { await act(async () => router.navigate(to)) }
 describe('root tab history', () => {
   it('does not accumulate a back stack when switching tabs repeatedly', async () => {
     for (let i = 0; i < 3; i++) {
-      for (const label of ['Plan', 'Stats', 'Exercises', 'Home']) await tap(label)
+      for (const label of ['Plan', 'Stats', 'Diet', 'Home']) await tap(label)
     }
     await tap('Plan')
     expect(router.state.location.pathname).toBe('/plan')

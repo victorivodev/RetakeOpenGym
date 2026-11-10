@@ -77,6 +77,7 @@ function lazyView(load) {
 const Admin = lazyView(() => import('./views/Admin.jsx'))
 const CoachChat = lazyView(() => import('./views/CoachChat.jsx'))
 const Measurements = lazyView(() => import('./views/Measurements.jsx'))
+const Diet = lazyView(() => import('./views/Diet.jsx'))
 const CoachIntake = lazyView(() => import('./views/CoachIntake.jsx'))
 const CoachSetup = lazyView(() => import('./views/CoachSetup.jsx'))
 const StructuralBalance = lazyView(() => import('./views/StructuralBalance.jsx'))
@@ -177,7 +178,7 @@ function Shell() {
   // worked out here, on this device, and never written into the synced state (lib/default-lang.js).
   const config = useStore(s => s.config)
   const lang = effectiveLang(S, config)
-  useEffect(() => { setLang(lang, S.enParens?.[baseLang(lang)] ?? true, S.enOnly?.[baseLang(lang)] === true) }, [lang, S.enParens, S.enOnly])
+  useEffect(() => { setLang(lang, S.enParens?.[baseLang(lang)] ?? false, S.enOnly?.[baseLang(lang)] === true) }, [lang, S.enParens, S.enOnly])
   // Same shape as the language: a module-level display setting, pushed when it changes (#139).
   useEffect(() => { setWeightDecimals(S.wdec) }, [S.wdec])
   useEffect(() => { document.documentElement.lang = lang }, [langV, lang])
@@ -337,6 +338,7 @@ function Shell() {
           route falls through to the catch-all redirect below. The data stays where it is. */}
       {isOn(S, 'checkin') && <Route path="/checkin" element={<CheckIn />} />}
       <Route path="/plan" element={<Plan />} />
+      <Route path="/diet" element={<Diet />} />
       <Route path="/plan/r/:id" element={<RoutineEdit />} />
       <Route path="/plan/programmes" element={<Programmes />} />
       <Route path="/plan/prog/:id" element={<ProgrammeEdit />} />
@@ -388,7 +390,7 @@ function Shell() {
       {/* Seasonal decoration (lib/seasonal.js): nothing, and nothing loaded, out of season. Never
           over a running workout or the first-launch screens. */}
       {authed && !needsMobileOnboarding && !permSteps && <SeasonalLayer hidden={inWorkout || loc.pathname === '/workout'} />}
-      {/* Your year in openGym (components/WrappedEntry.jsx): nothing loaded until it is opened. */}
+      {/* Your year in Retake Gym (components/WrappedEntry.jsx): nothing loaded until it is opened. */}
       {authed && isOn(S, 'motivation') && <WrappedLayer ready={setupDone} />}
     </>
   )

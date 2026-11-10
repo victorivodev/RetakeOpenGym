@@ -5,15 +5,15 @@
 #
 #   ruby frontend/ios/ci/add-watch-app.rb
 #
-# App Store Connect needs, before a signed build: the bundle ids ch.opengym.app.watchkitapp
-# (HealthKit, App Group group.ch.opengym.app) and ch.opengym.app.watchkitapp.widgets (App Group
-# group.ch.opengym.app), an App Store provisioning profile for each; the release script
+# App Store Connect needs, before a signed build: the bundle ids br.com.retaketecnologia.gym.watchkitapp
+# (HealthKit, App Group group.br.com.retaketecnologia.gym) and br.com.retaketecnologia.gym.watchkitapp.widgets (App Group
+# group.br.com.retaketecnologia.gym), an App Store provisioning profile for each; the release script
 # (scripts/ios/finish-ipa.sh) signs the watch app with WATCH_PROFILE and its widget extension with
 # WATCH_WIDGET_PROFILE.
 require 'xcodeproj'
 
 NAME = 'OpenGymWatch'
-BUNDLE_ID = 'ch.opengym.app.watchkitapp'
+BUNDLE_ID = 'br.com.retaketecnologia.gym.watchkitapp'
 DIR = 'Watch'
 
 dir = File.expand_path('../App', __dir__)
@@ -77,7 +77,7 @@ file.settings = { 'ATTRIBUTES' => ['RemoveHeadersOnCopy'] }
 
 # The complications and the Smart Stack widget (ios/App/WatchWidgets), a WidgetKit extension in the
 # watch app (OpenGymWatch.app/PlugIns), reading the state the app writes (Watch/WidgetState.swift,
-# compiled into both) through the App Group group.ch.opengym.app.
+# compiled into both) through the App Group group.br.com.retaketecnologia.gym.
 WIDGET = 'OpenGymWatchWidgets'
 WIDGET_DIR = 'WatchWidgets'
 widget = proj.new_target(:app_extension, WIDGET, :watchos, '10.0')

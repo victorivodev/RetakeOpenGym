@@ -1,5 +1,5 @@
 /* ============================================================================
-   openGym — design system
+   Retake Gym — design system
    ----------------------------------------------------------------------------
    Rebuilt around four rules, each aimed at a specific "generated" tell in the
    previous sheet:
@@ -141,6 +141,7 @@
 }
 
 /* accents — Apple's system colours, so a recolour never looks off-system */
+:root[data-accent="retake"]{ --acc:#e8cc85; --acc-2:#b89a4e; --on-acc:#0c1324 }
 :root[data-accent="lime"]  { --acc:var(--green);  --acc-2:#248a3d; --on-acc:#000 }
 :root[data-accent="sky"]   { --acc:var(--blue);   --acc-2:#0060df; --on-acc:#fff }
 :root[data-accent="orange"]{ --acc:var(--orange); --acc-2:#c76b00; --on-acc:#000 }
@@ -152,6 +153,7 @@
 /* --acc-ink in the light theme, per preset: 4.5:1 or better on both --bg (#f2f2f7) and white. A
    colour of the user's own gets its --acc-ink inline from lib/accent.js (inkIn), to the same 4.5:1
    in both themes (redesign 1.4.5, P12). */
+:root[data-theme="light"][data-accent="retake"]{ --acc-ink:#32658a }
 :root[data-theme="light"][data-accent="lime"]  { --acc-ink:#1a7f37 }
 :root[data-theme="light"][data-accent="sky"]   { --acc-ink:#0062cc }
 :root[data-theme="light"][data-accent="orange"]{ --acc-ink:#a85200 }
@@ -2505,7 +2507,7 @@ body.totop-on.resting #app{padding-bottom:calc(232px + var(--sab))}
 .cal-d i.noted{background:var(--indigo)}
 .cal-legend{display:flex;gap:14px;justify-content:center;margin-top:12px;font-size:var(--fs-caption);color:var(--label-3)}
 .cal-legend i{display:inline-block;width:6px;height:6px;border-radius:50%;margin-inline-end:5px}
-/* --- openGym date field + picker (#809, components/DateField.jsx) ---
+/* --- Retake Gym date field + picker (#809, components/DateField.jsx) ---
    The field is a button dressed as the field or row value it replaces; the picker reuses the
    calendar's cells above. Cells are at least 44px tall: at 320px seven columns cannot also be
    44px wide, so the grid gives up gap before it gives up height. */
@@ -3082,7 +3084,7 @@ button.wl-summary{width:100%;padding:0 0 10px;text-align:start;border-radius:var
 .youtube-actions{display:flex;justify-content:space-between;gap:8px;margin-top:8px}
 .youtube-actions .btn{min-height:44px}
 
-/* Your year in openGym: Home's December card (components/WrappedEntry.jsx). The stories' own
+/* Your year in Retake Gym: Home's December card (components/WrappedEntry.jsx). The stories' own
    styles load with them (components/Wrapped.css). */
 .wr-home{position:relative;overflow:hidden;background:var(--surface);background:linear-gradient(135deg,color-mix(in srgb,var(--acc) 24%,var(--surface)),var(--surface) 72%)}
 .wr-home>.btn{margin-top:12px}

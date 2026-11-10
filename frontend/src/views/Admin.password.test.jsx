@@ -6,7 +6,7 @@ import Admin from './Admin.jsx'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
-/* The admin's half of password sign-in (#118): "Reset password" in a user's drill-down, which
+/* The admin's half of password sign-in (#118): "Redefinir senha" in a user's drill-down, which
    asks first and then shows the one-time code exactly once, on a sheet that a stray tap cannot
    close. Only an instance with password sign-in sends `password` on the user, and only then is
    any of this there. */
@@ -77,19 +77,19 @@ describe('Admin → Reset password', () => {
   it('is not there on an instance without password sign-in', async () => {
     mocks.answers['/api/admin/user'] = detail()
     const sheet = await openMallory()
-    expect(button(sheet, 'Disable account')).toBeTruthy()
-    expect(button(sheet, 'Reset password')).toBeUndefined()
+    expect(button(sheet, 'Desativar conta')).toBeTruthy()
+    expect(button(sheet, 'Redefinir senha')).toBeUndefined()
   })
 
   it('asks first, then shows the one-time code once, on a sheet that stays until "Done"', async () => {
     mocks.answers['/api/admin/user'] = detail({ password: true, resetUntil: null })
     const sheet = await openMallory()
-    expect([...sheet.querySelectorAll('.adm-pill')].map(p => p.textContent)).toContain('password')
-    act(() => button(sheet, 'Reset password').click())
+    expect([...sheet.querySelectorAll('.adm-pill')].map(p => p.textContent)).toContain('senha')
+    act(() => button(sheet, 'Redefinir senha').click())
     expect(mocks.confirm).toHaveBeenCalledTimes(1)
     const opts = mocks.confirm.mock.calls[0][0]
-    expect(opts.confirmText).toBe('Create reset code')
-    expect(opts.message).toMatch(/current password stops working/)
+    expect(opts.confirmText).toBe('Criar código')
+    expect(opts.message).toMatch(/senha atual para de funcionar/)
     expect(mocks.posts).toEqual([])            // nothing happens before the confirm
 
     const before = mocks.sheets.length
@@ -101,15 +101,15 @@ describe('Admin → Reset password', () => {
     const code = render(shown.render(() => {}))
     expect(code.textContent).toContain('K7WQ-2MZP-4HXA')
     expect(code.textContent).toContain('Mallory')
-    expect(button(code, 'Done')).toBeTruthy()
+    expect(button(code, 'Pronto')).toBeTruthy()
   })
 
   it('offers it to a profile with no password too — the way back after a lost passkey', async () => {
     mocks.answers['/api/admin/user'] = detail({ password: false, resetUntil: Date.now() + 3600000 })
     const sheet = await openMallory()
-    expect(button(sheet, 'Reset password')).toBeTruthy()
-    expect(sheet.textContent).toMatch(/lets them set one/)
-    expect(sheet.textContent).toMatch(/reset code until/)
+    expect(button(sheet, 'Redefinir senha')).toBeTruthy()
+    expect(sheet.textContent).toMatch(/deixa a pessoa criar uma/)
+    expect(sheet.textContent).toMatch(/código de senha até/)
   })
 })
 
@@ -122,12 +122,12 @@ describe('Admin → sign-in e-mail', () => {
     expect([...page.querySelectorAll('.item')].find(el => el.textContent.includes('Mallory')).textContent).toContain('mallory@example.com')
     const sheet = await openMallory()
     expect([...sheet.querySelectorAll('.adm-pill')].map(p => p.textContent)).toContain('mallory@example.com')
-    act(() => button(sheet, 'Reset password').click())
+    act(() => button(sheet, 'Redefinir senha').click())
     const before = mocks.sheets.length
     await act(async () => { await mocks.confirm.mock.calls[0][0].onConfirm() })
     await settle()
     const code = render(mocks.sheets.slice(before).find(s => s.opts?.locked).render(() => {}))
-    expect(code.textContent).toContain('or their sign-in e-mail mallory@example.com')
+    expect(code.textContent).toContain('ou o e-mail de acesso mallory@example.com')
   })
 
   it('shows nothing where the server sends no address', async () => {

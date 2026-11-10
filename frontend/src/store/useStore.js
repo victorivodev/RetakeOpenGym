@@ -5,7 +5,7 @@ import { t } from '../lib/i18n.js'
 import { registerCustom, healCustomEx } from '../lib/exercises.js'
 import { syncGymInventory } from '../lib/gym-inventory.js'
 import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
-import { rememberDefaultLang } from '../lib/default-lang.js'
+import { rememberDefaultLang, RETAKE_DEFAULT_LANG } from '../lib/default-lang.js'
 import { guestAllowed } from '../lib/guest.js'
 import { stateJson } from '../lib/state-json.js'
 import { MOBILE, initReminderSync, nativeLoad, nativeSave, onAppActive, readJsonFile, syncReminder, writeAutoBackup, writeJsonFile } from '../lib/mobile.js'
@@ -90,7 +90,7 @@ const gainedWorkoutMedia = (prev, next) => {
 }
 export const DEF = {
   unit: 'kg', restSec: 90, restPauseSec: 15, sound: true, soundOnSilent: false, vibrateOnSilent: false, timerFlash: false, timedSetOvertime: false, keepAwake: true, lang: 'en',
-  theme: 'dark', accent: 'lime', body: 'male', targetW: null,
+  theme: 'dark', accent: 'retake', body: 'male', targetW: null,
   // The weekly-rate corridor on the body-weight card (#759, lib/bodyweight.js rateCorridor).
   rateGoal: null,
   bodyweight: [], routines: [], week: {}, dayPlan: {},
@@ -100,6 +100,9 @@ export const DEF = {
   // Body measurements (#82, #699): one check-in per day; canonical cm, kg or % according to
   // the field's unit (lib/measurements.js); merged like weigh-ins (lib/sync-merge.js).
   measurements: [], measurementEnabled: null, customMeasurements: [],
+  // Retake Gym diet (lib/nutrition.js): the goal profile, the meals (stamped per meal, a deleted
+  // one kept as { _ts, gone }) and the water per day, both merged per key (lib/sync-merge.js).
+  diet: null, meals: {}, water: {},
   queue: null,   // a planner's floating week (lib/queue.js) — via the API, or by this rotation feature (below)
   // The in-app rotation's reusable definition — { id, sequence, label } (lib/rotation.js). Never
   // a live queue: it only ever feeds `queue`, and `queue.rotationId` says the pass is managed here.
@@ -320,7 +323,8 @@ const detectedLang = () => {
     const base = (navigator.language || '').toLowerCase().split('-')[0]
     if (RTL_LANGS.has(base)) return base
   } catch (e) { /* ignore */ }
-  return 'en'
+  // Retake Gym starts in Brazilian Portuguese (lib/default-lang.js RETAKE_DEFAULT_LANG).
+  return RETAKE_DEFAULT_LANG
 }
 
 // A copy started from nothing on this device. `langAuto` marks its language as one nobody has
@@ -498,7 +502,7 @@ export const useStore = create((set, get) => {
        'local'   no server: a phone in local mode, a guest, nobody signed in
        'auth'    the server refuses this device (a 401), or the phone has lost its pairing
        'offline' the server could not be reached at all (no network, DNS, a timeout)
-       'error'   it answered with a failure: 5xx, 403, 413, a page that is not openGym's
+       'error'   it answered with a failure: 5xx, 403, 413, a page that is not Retake Gym's
        'held'    signed in, but the question about this device's own entries is still open
        'pending' reachable, and a change is still waiting to reach it
        'ok'      this device holds what the server holds

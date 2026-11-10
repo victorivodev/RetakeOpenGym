@@ -178,6 +178,20 @@ export function buildDemoState() {
     dayPlan[tIso] = order[(order.findIndex(r => r.name === lastName) + 1) % order.length].id
   }
 
+  // Retake Gym: a diet goal and today's breakfast and lunch, so the Diet tab has something to show.
+  const nowMs = Date.now()
+  const meals = {
+    dm1: { id: 'dm1', date: tIso, slot: 'breakfast', title: 'Ovos mexidos com pão e café', source: 'ai-photo', at: nowMs - 5 * 3600000, _ts: nowMs, items: [
+      { name: 'Ovos mexidos', grams: 110, kcal: 165, protein: 12.5, carbs: 1.2, fat: 12.1, fiber: 0, confidence: 0.85 },
+      { name: 'Pão francês', grams: 50, kcal: 150, protein: 4, carbs: 29.3, fat: 1.6, fiber: 1.2, confidence: 0.9 },
+      { name: 'Café com leite', grams: 200, kcal: 84, protein: 4.4, carbs: 6.8, fat: 4.4, fiber: 0, confidence: 0.7 }] },
+    dm2: { id: 'dm2', date: tIso, slot: 'lunch', title: 'Arroz, feijão, frango grelhado e salada', source: 'ai-text', at: nowMs - 2 * 3600000, _ts: nowMs, items: [
+      { name: 'Arroz branco', grams: 150, kcal: 192, protein: 3.8, carbs: 42.2, fat: 0.3, fiber: 2.4, confidence: 0.8 },
+      { name: 'Feijão carioca', grams: 100, kcal: 76, protein: 4.8, carbs: 13.6, fat: 0.5, fiber: 8.5, confidence: 0.8 },
+      { name: 'Frango grelhado', grams: 130, kcal: 208, protein: 41.6, carbs: 0, fat: 4.6, fiber: 0, confidence: 0.75 },
+      { name: 'Salada de alface e tomate', grams: 80, kcal: 14, protein: 0.9, carbs: 2.5, fat: 0.2, fiber: 1.6, confidence: 0.6 }] }
+  }
+
   return {
     routines: [push, pull, legs],
     week: { 1: push.id, 3: pull.id, 5: legs.id },
@@ -186,6 +200,10 @@ export function buildDemoState() {
     targetW: TARGET_W,
     // The history is rated, so the demo turns the column on and the stats get a scale to
     // label their aggregates with instead of guessing one (see displayScale).
-    effort: 'rir'
+    effort: 'rir',
+    // Retake Gym: the demo starts in Brazilian Portuguese, like a fresh profile.
+    lang: 'pt-BR',
+    diet: { sex: 'male', heightCm: 178, birthYear: 1993, activity: 'moderate', goal: 'lose', ratePerWeekKg: 0.5 },
+    meals, water: { [tIso]: { ml: 1250, _ts: nowMs } }
   }
 }

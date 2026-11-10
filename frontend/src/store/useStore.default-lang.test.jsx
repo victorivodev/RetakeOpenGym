@@ -31,32 +31,32 @@ describe('instance default language', () => {
 
   it('a fresh copy is shown in DEFAULT_LANG once the config is in, and its state is left alone', async () => {
     useStore.setState({ S: freshState() })
-    expect(shown()).toBe('en')   // nothing to go on before the config
+    expect(shown()).toBe('pt-BR')   // Retake Gym's own default before the config
     const before = clone(useStore.getState().S)
 
-    api.mockResolvedValueOnce({ invite_only: false, allow_guest: true, default_lang: 'pt-BR' })
+    api.mockResolvedValueOnce({ invite_only: false, allow_guest: true, default_lang: 'fr' })
     await useStore.getState().refreshConfig()
-    expect(shown()).toBe('pt-BR')
+    expect(shown()).toBe('fr')
     expect(useStore.getState().S).toEqual(before)
   })
 
   it('the next boot uses the default this device last saw, before the config answers', async () => {
     nav(['de-DE'])
-    api.mockResolvedValueOnce({ invite_only: false, default_lang: 'pt-BR' })
+    api.mockResolvedValueOnce({ invite_only: false, default_lang: 'fr' })
     await useStore.getState().refreshConfig()
     useStore.setState({ S: freshState(), config: null })
-    expect(shown()).toBe('pt-BR')   // not the browser's German first
-    // An instance known to have none: the browser's language at once.
+    expect(shown()).toBe('fr')   // not the browser's German first
+    // An instance known to have none: Retake Gym's Brazilian Portuguese at once.
     api.mockResolvedValueOnce({ invite_only: false })
     await useStore.getState().refreshConfig()
     useStore.setState({ config: null })
-    expect(shown()).toBe('de')
+    expect(shown()).toBe('pt-BR')
   })
 
-  it('without DEFAULT_LANG a fresh copy follows the browser when the app speaks it', () => {
+  it('Retake Gym: without DEFAULT_LANG a fresh copy starts in Brazilian Portuguese, whatever the browser', () => {
     nav(['de-DE', 'en'])
     useStore.setState({ S: freshState(), config: { invite_only: false, allow_guest: true } })
-    expect(shown()).toBe('de')
+    expect(shown()).toBe('pt-BR')
   })
 
   it('an existing copy with lang "en" and no mark is left in English', () => {
@@ -79,7 +79,7 @@ describe('instance default language', () => {
     const server = { ...clone(DEF), _ts: 100, lang: 'de', langAuto: true, workouts: [{ id: 'w1', d: '2026-09-01', start: 1, entries: [] }] }
     useStore.setState({ S: clone(server), user: { id: 'u1' }, ready: true, config: { invite_only: false } })
     localStorage.setItem('gym_sync', JSON.stringify({ rev: 5, ts: 100 }))
-    expect(shown()).toBe('en')
+    expect(shown()).toBe('pt-BR')
     expect(useStore.getState().S.lang).toBe('de')
 
     // The next poll: the server has not moved, and this device owes it nothing.
@@ -88,6 +88,6 @@ describe('instance default language', () => {
     await useStore.getState().pullState()
     expect(puts()).toHaveLength(0)
     expect(useStore.getState().S.lang).toBe('de')
-    expect(shown()).toBe('en')
+    expect(shown()).toBe('pt-BR')
   })
 })

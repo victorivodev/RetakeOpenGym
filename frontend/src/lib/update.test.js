@@ -43,7 +43,7 @@ describe('checkForUpdate', () => {
   it('asks GitHub for the latest published release (never a draft or a beta)', async () => {
     mockFetch({ tag_name: 'v' + __APP_VERSION__, assets: [] })
     await checkForUpdate()
-    expect(globalThis.fetch.mock.calls[0][0]).toBe('https://api.github.com/repos/DuarteSantos8/openGym/releases/latest')
+    expect(globalThis.fetch.mock.calls[0][0]).toBe('https://api.github.com/repos/victorivodev/RetakeOpenGym/releases/latest')
   })
 
   it('reports no update when the latest release matches the current version', async () => {
@@ -82,8 +82,8 @@ describe('checkForUpdate', () => {
   const REAL_RELEASE = {
     tag_name: 'v1.4.0',
     assets: [
-      { name: 'openGym-1.4.0.apk', browser_download_url: 'https://github.com/DuarteSantos8/openGym/releases/download/v1.4.0/openGym-1.4.0.apk' },
-      { name: 'openGym-1.4.0.apk.sha256', browser_download_url: 'https://github.com/DuarteSantos8/openGym/releases/download/v1.4.0/openGym-1.4.0.apk.sha256' },
+      { name: 'RetakeGym-1.4.0.apk', browser_download_url: 'https://github.com/victorivodev/RetakeOpenGym/releases/download/v1.4.0/RetakeGym-1.4.0.apk' },
+      { name: 'RetakeGym-1.4.0.apk.sha256', browser_download_url: 'https://github.com/victorivodev/RetakeOpenGym/releases/download/v1.4.0/RetakeGym-1.4.0.apk.sha256' },
     ],
   }
 
@@ -91,8 +91,8 @@ describe('checkForUpdate', () => {
     mockFetch(REAL_RELEASE)
     const result = await checkForUpdate()
     expect(result.latestVersion).toBe('1.4.0')
-    expect(result.apkUrl).toBe('https://github.com/DuarteSantos8/openGym/releases/download/v1.4.0/openGym-1.4.0.apk')
-    expect(result.hashUrl).toBe('https://github.com/DuarteSantos8/openGym/releases/download/v1.4.0/openGym-1.4.0.apk.sha256')
+    expect(result.apkUrl).toBe('https://github.com/victorivodev/RetakeOpenGym/releases/download/v1.4.0/RetakeGym-1.4.0.apk')
+    expect(result.hashUrl).toBe('https://github.com/victorivodev/RetakeOpenGym/releases/download/v1.4.0/RetakeGym-1.4.0.apk.sha256')
   })
 
   it('does not take the checksum for the APK when it is listed first', async () => {
@@ -135,7 +135,7 @@ describe('fetchChecksum (web)', () => {
   const serve = text => { globalThis.fetch = vi.fn(() => Promise.resolve({ ok: true, text: () => Promise.resolve(text) })) }
 
   it('reads the hash out of a sha256sum line', async () => {
-    serve('EC2822' + 'a'.repeat(58) + '  openGym-1.4.0.apk\n')
+    serve('EC2822' + 'a'.repeat(58) + '  RetakeGym-1.4.0.apk\n')
     expect(await fetchChecksum('https://x/a.apk.sha256')).toBe('ec2822' + 'a'.repeat(58))
   })
 
@@ -232,9 +232,9 @@ describe('semver comparison (via checkForUpdate behavior)', () => {
 // v1.4.2: a release carries a Standard and an HD APK. GitHub lists assets by name, so for the
 // names we publish the HD file would come first; each build must still find its own.
 describe('pickApk: Standard and HD APKs', () => {
-  const url = n => `https://github.com/DuarteSantos8/openGym/releases/download/v1.4.2/${n}`
+  const url = n => `https://github.com/victorivodev/RetakeOpenGym/releases/download/v1.4.2/${n}`
   const a = n => ({ name: n, browser_download_url: url(n) })
-  const RELEASE = ['openGym-1.4.2.apk', 'openGym-1.4.2.apk.sha256', 'openGym-HD-1.4.2.apk', 'openGym-HD-1.4.2.apk.sha256'].map(a)
+  const RELEASE = ['RetakeGym-1.4.2.apk', 'RetakeGym-1.4.2.apk.sha256', 'RetakeGym-HD-1.4.2.apk', 'RetakeGym-HD-1.4.2.apk.sha256'].map(a)
 
   it('a test build without a variant is the Standard APK', () => {
     expect(APK_VARIANT).toBe('standard')
@@ -242,63 +242,63 @@ describe('pickApk: Standard and HD APKs', () => {
 
   it('the Standard APK updates to the Standard APK and its own checksum', () => {
     const { apk, hash } = pickApk(RELEASE, 'standard')
-    expect(apk.name).toBe('openGym-1.4.2.apk')
-    expect(hash.name).toBe('openGym-1.4.2.apk.sha256')
+    expect(apk.name).toBe('RetakeGym-1.4.2.apk')
+    expect(hash.name).toBe('RetakeGym-1.4.2.apk.sha256')
   })
 
   it('the HD APK updates to the HD APK and its own checksum, whatever the order', () => {
     for (const list of [RELEASE, [...RELEASE].reverse()]) {
       const { apk, hash } = pickApk(list, 'hd')
-      expect(apk.name).toBe('openGym-HD-1.4.2.apk')
-      expect(hash.name).toBe('openGym-HD-1.4.2.apk.sha256')
+      expect(apk.name).toBe('RetakeGym-HD-1.4.2.apk')
+      expect(hash.name).toBe('RetakeGym-HD-1.4.2.apk.sha256')
     }
   })
 
   it('the Standard APK is never offered the HD one, even when it is listed first', () => {
     const { apk, hash } = pickApk([...RELEASE].reverse(), 'standard')
-    expect(apk.name).toBe('openGym-1.4.2.apk')
-    expect(hash.name).toBe('openGym-1.4.2.apk.sha256')
+    expect(apk.name).toBe('RetakeGym-1.4.2.apk')
+    expect(hash.name).toBe('RetakeGym-1.4.2.apk.sha256')
   })
 
   it('also knows a -hd suffix', () => {
-    expect(pickApk(['openGym-1.5.0-hd.apk', 'openGym-1.5.0.apk'].map(a), 'hd').apk.name).toBe('openGym-1.5.0-hd.apk')
-    expect(pickApk(['openGym-1.5.0-hd.apk', 'openGym-1.5.0.apk'].map(a), 'standard').apk.name).toBe('openGym-1.5.0.apk')
+    expect(pickApk(['RetakeGym-1.5.0-hd.apk', 'RetakeGym-1.5.0.apk'].map(a), 'hd').apk.name).toBe('RetakeGym-1.5.0-hd.apk')
+    expect(pickApk(['RetakeGym-1.5.0-hd.apk', 'RetakeGym-1.5.0.apk'].map(a), 'standard').apk.name).toBe('RetakeGym-1.5.0.apk')
   })
 
   it('an HD build is not moved to Standard when a release has no HD APK', () => {
-    const { apk, hash } = pickApk(['openGym-1.3.10.apk', 'openGym-1.3.10.apk.sha256'].map(a), 'hd')
+    const { apk, hash } = pickApk(['RetakeGym-1.3.10.apk', 'RetakeGym-1.3.10.apk.sha256'].map(a), 'hd')
     expect(apk).toBe(null)
     expect(hash).toBe(null)
   })
 
   it('names that only contain the letters hd are not HD', () => {
-    expect(pickApk([a('openGym-shdw-1.4.2.apk')], 'standard').apk.name).toBe('openGym-shdw-1.4.2.apk')
+    expect(pickApk([a('Retake Gym-shdw-1.4.2.apk')], 'standard').apk.name).toBe('Retake Gym-shdw-1.4.2.apk')
   })
 
   it('a checksum that belongs to another APK is not used', () => {
-    const { apk, hash } = pickApk(['openGym-HD-1.4.2.apk.sha256', 'openGym-1.4.2.apk'].map(a), 'standard')
-    expect(apk.name).toBe('openGym-1.4.2.apk')
+    const { apk, hash } = pickApk(['RetakeGym-HD-1.4.2.apk.sha256', 'RetakeGym-1.4.2.apk'].map(a), 'standard')
+    expect(apk.name).toBe('RetakeGym-1.4.2.apk')
     expect(hash).toBe(null)
   })
 })
 
 describe('pickApk: Standard, Plus and HD', () => {
-  const a = n => ({ name: n, browser_download_url: `https://github.com/DuarteSantos8/openGym/releases/download/v1.4.2/${n}` })
-  const NAMES = ['openGym-1.4.2.apk', 'openGym-1.4.2.apk.sha256', 'openGym-HD-1.4.2.apk', 'openGym-HD-1.4.2.apk.sha256',
-    'openGym-Plus-1.4.2.apk', 'openGym-Plus-1.4.2.apk.sha256']
+  const a = n => ({ name: n, browser_download_url: `https://github.com/victorivodev/RetakeOpenGym/releases/download/v1.4.2/${n}` })
+  const NAMES = ['RetakeGym-1.4.2.apk', 'RetakeGym-1.4.2.apk.sha256', 'RetakeGym-HD-1.4.2.apk', 'RetakeGym-HD-1.4.2.apk.sha256',
+    'RetakeGym-Plus-1.4.2.apk', 'RetakeGym-Plus-1.4.2.apk.sha256']
   const sorted = [...NAMES].sort().map(a)  // GitHub lists assets by name
 
   it('names the three kinds', () => {
-    expect(apkKind('openGym-1.4.2.apk')).toBe('standard')
-    expect(apkKind('openGym-Plus-1.4.2.apk')).toBe('plus')
-    expect(apkKind('openGym-HD-1.4.2.apk')).toBe('hd')
-    expect(apkKind('openGym-1.5.0-plus.apk')).toBe('plus')
-    expect(apkKind('openGym-surplus-1.4.2.apk')).toBe('standard')
+    expect(apkKind('RetakeGym-1.4.2.apk')).toBe('standard')
+    expect(apkKind('RetakeGym-Plus-1.4.2.apk')).toBe('plus')
+    expect(apkKind('RetakeGym-HD-1.4.2.apk')).toBe('hd')
+    expect(apkKind('RetakeGym-1.5.0-plus.apk')).toBe('plus')
+    expect(apkKind('Retake Gym-surplus-1.4.2.apk')).toBe('standard')
   })
 
   it('each kind updates only to itself, with its own checksum, in any order', () => {
     for (const list of [sorted, [...sorted].reverse()]) {
-      for (const [variant, name] of [['standard', 'openGym-1.4.2.apk'], ['plus', 'openGym-Plus-1.4.2.apk'], ['hd', 'openGym-HD-1.4.2.apk']]) {
+      for (const [variant, name] of [['standard', 'RetakeGym-1.4.2.apk'], ['plus', 'RetakeGym-Plus-1.4.2.apk'], ['hd', 'RetakeGym-HD-1.4.2.apk']]) {
         const { apk, hash } = pickApk(list, variant)
         expect(apk.name).toBe(name)
         expect(hash.name).toBe(`${name}.sha256`)
@@ -307,11 +307,11 @@ describe('pickApk: Standard, Plus and HD', () => {
   })
 
   it('a phone from before v1.4.2 (first .apk, first .sha256 in name order) lands on Standard, checksum matching', () => {
-    expect(sorted.find(x => /\.apk$/i.test(x.name)).name).toBe('openGym-1.4.2.apk')
-    expect(sorted.find(x => /\.apk\.sha256$/i.test(x.name)).name).toBe('openGym-1.4.2.apk.sha256')
+    expect(sorted.find(x => /\.apk$/i.test(x.name)).name).toBe('RetakeGym-1.4.2.apk')
+    expect(sorted.find(x => /\.apk\.sha256$/i.test(x.name)).name).toBe('RetakeGym-1.4.2.apk.sha256')
   })
 
   it('a Plus build is not moved to another kind when a release has no Plus APK', () => {
-    expect(pickApk(['openGym-1.4.3.apk', 'openGym-HD-1.4.3.apk'].map(a), 'plus').apk).toBe(null)
+    expect(pickApk(['RetakeGym-1.4.3.apk', 'RetakeGym-HD-1.4.3.apk'].map(a), 'plus').apk).toBe(null)
   })
 })

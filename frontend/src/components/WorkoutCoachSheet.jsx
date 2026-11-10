@@ -11,6 +11,8 @@ import { useUI } from '../store/useUI.js'
 import { t, tn } from '../lib/i18n.js'
 import { fmtRest } from '../lib/duration.js'
 import { exTitle, appendLog } from '../lib/coach.js'
+import { EXIDX } from '../lib/exercises.js'
+import Media from './Media.jsx'
 import { useCoachStatus, requestAdapt, resolvePending, jobErrorText, isDeclined } from '../lib/coach-api.js'
 import { adaptFor, markAdaptStale, applyAdapt, adaptLogEntry } from '../lib/coach-adapt.js'
 import Icon from './Icon.jsx'
@@ -44,12 +46,13 @@ export function adaptTitle(c) {
 }
 
 /** The proposal as tickable cards: in the sheet during the workout, and in the Coach's chat. */
-export function AdaptProposal({ p, onDone }) {
+export function AdaptProposal({ p, onDone, onRetry }) {
   const S = useStore(s => s.S)
   const update = useStore(s => s.update)
   const toast = useUI(s => s.toast)
   const live = adaptFor(S, p)
   const marked = useMemo(() => markAdaptStale(S, p), [S, p])
+  const [reply, setReply] = useState('')
   const [accepted, setAccepted] = useState(() => new Set(marked.filter(c => !c.stale).map(c => c.id)))
   const toggle = id => setAccepted(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   const ids = [...accepted].filter(id => marked.some(c => c.id === id && !c.stale))
@@ -80,6 +83,15 @@ export function AdaptProposal({ p, onDone }) {
     resolvePending({ dismissed: true }).catch(() => {})
     finish()
   }
+  // "Not this one": the proposal is set aside like a dismissal, and the Coach is asked again with
+  // what the person said about it, so the sheet carries on like a chat.
+  const retry = async () => {
+    const said = reply.trim()
+    const names = marked.filter(c => c.to).map(c => exTitle(c.to)).join(', ')
+    update(s => { appendLog(s, adaptLogEntry(p, [], { dismissed: true })) })
+    await resolvePending({ dismissed: true }).catch(() => {})
+    onRetry(said || (names ? t('I don’t want {0}. Suggest something else.', names) : t('Suggest something else.')))
+  }
 
   return <div className="pcard adapt-card">
     <div className="pcard-hd">
@@ -92,6 +104,7 @@ export function AdaptProposal({ p, onDone }) {
       <div className="grow">
         <div className="pcard-chg-t">{adaptTitle(c)}</div>
         <div className="pcard-chg-w">{c.why}</div>
+        {c.to && EXIDX[c.to] && <div className="adapt-media"><Media ex={EXIDX[c.to]} compact /></div>}
         {c.stale && live && <div className="pcard-chg-stale">{t('Your workout moved on, so this one no longer fits.')}</div>}
       </div>
       {!c.stale && <Check checked={accepted.has(c.id)} onChange={() => toggle(c.id)} label={adaptTitle(c)} />}
@@ -103,6 +116,11 @@ export function AdaptProposal({ p, onDone }) {
       </Button>}
       <Button onClick={dismiss}>{live ? t('Not now') : t('Dismiss')}</Button>
     </div>
+    {live && onRetry && <div className="adapt-retry">
+      <TextField className="adapt-text" value={reply} maxLength={400} placeholder={t('Reply to the Coach (e.g. I’d rather use dumbbells)')}
+        onChange={e => setReply(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') retry() }} />
+      <Button icon="reset" onClick={retry}>{reply.trim() ? t('Send') : t('Suggest another')}</Button>
+    </div>}
   </div>
 }
 
@@ -116,17 +134,21 @@ export default function WorkoutCoachSheet({ entryIdx, close }) {
   const [sent, setSent] = useState(null)        // the job this sheet started
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  const [said, setSaid] = useState([])           // what the person told the Coach in this sheet
   const mine = pending?.kind === 'adapt' && adaptFor(S, pending) ? pending : null
 
   // The sheet started a job and it ended without a proposal: say what came back.
   const ended = sent && !job && !mine && last?.id && last.id === sent
   useEffect(() => { if (sent && !job) refresh() }, [sent, !!job])
 
-  const send = async () => {
-    if (!reason || busy) return
+  const send = async (again) => {
+    const why = again ? (reason || again.reason || 'other') : reason
+    const words = again ? again.text : text
+    if (!why || busy) return
     setBusy(true); setError(null)
+    if (words) setSaid(x => [...x, words])
     try {
-      const r = await requestAdapt({ entry: entryIdx, reason, text })
+      const r = await requestAdapt({ entry: entryIdx, reason: why, text: words })
       setSent(r?.job?.id || 'started')
       refresh()
     } catch (e) {
@@ -134,11 +156,16 @@ export default function WorkoutCoachSheet({ entryIdx, close }) {
     } finally { setBusy(false) }
   }
 
-  if (mine) return <div className="workout-coach"><AdaptProposal p={mine} onDone={close} /></div>
+  const thread = said.length > 0 && <div className="adapt-thread">
+    {said.map((m, i) => <div key={i} className="msg user"><div className="bub">{m}</div></div>)}
+  </div>
+  if (mine) return <div className="workout-coach">{thread}<AdaptProposal p={mine} onDone={close}
+    onRetry={words => { setSent(null); send({ reason: mine.focus?.reason, text: words }) }} /></div>
   const name = entry ? exTitle(entry.id) : ''
   return <div className="workout-coach">
     <div className="pcard-eyebrow"><Icon name="sparkles" /> {t('Ask the Coach')}</div>
     <h2 className="pcard-h" style={{ margin: '4px 0 12px' }}>{name}</h2>
+    {thread}
     {job || (sent && !ended)
       ? <div className="adapt-wait" role="status">
         <div className="bub typing"><i /><i /><i /></div>
@@ -165,7 +192,7 @@ export default function WorkoutCoachSheet({ entryIdx, close }) {
             onChange={e => setText(e.target.value)} />
           {error && <p className="small" style={{ color: 'var(--red)' }}>{error}</p>}
           <div className="pcard-ft" style={{ paddingInline: 0 }}>
-            <Button variant="primary" icon="sparkles" onClick={send} disabled={!reason || busy}>{t('Ask the Coach')}</Button>
+            <Button variant="primary" icon="sparkles" onClick={() => send()} disabled={!reason || busy}>{t('Ask the Coach')}</Button>
             <Button onClick={close}>{t('Cancel')}</Button>
           </div>
         </>}

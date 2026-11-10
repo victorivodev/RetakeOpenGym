@@ -90,8 +90,8 @@ describe('the tab icons and labels', () => {
   const label = el => el.querySelector('span:last-child').textContent
   it('labels every tab and uses one icon per concept', () => {
     act(() => { root.render(<TabBar onStart={() => {}} />) })
-    expect(tabs().map(icon)).toEqual(['house', 'calendar', 'play', 'chart', 'dumbbell'])
-    expect(tabs().map(label)).toEqual(['Home', 'Plan', 'Start', 'Stats', 'Exercises'])
+    expect(tabs().map(icon)).toEqual(['house', 'calendar', 'play', 'apple', 'chart'])
+    expect(tabs().map(label)).toEqual(['Home', 'Plan', 'Start', 'Diet', 'Stats'])
 
     act(() => { useStore.getState().update(s => { s.active = { id: 'a', entries: [], cur: 0 } }, false) })
     expect(icon(tabs()[2])).toBe('play')
@@ -124,7 +124,7 @@ describe('the tab a screen without its own lights', () => {
   const lit = () => tabs().filter(b => b.classList.contains('on')).map(b => b.textContent)
   it.each([
     ['/history', 'Stats'], ['/structural-balance', 'Stats'], ['/progress-photos', 'Stats'], ['/measurements', 'Stats'],
-    ['/settings', 'Home'], ['/settings/units', 'Home'], ['/checkin', 'Home'], ['/muscles', 'Exercises'],
+    ['/settings', 'Home'], ['/settings/units', 'Home'], ['/checkin', 'Home'], ['/muscles', 'Plan'], ['/library', 'Plan'],
   ])('%s lights %s', (pathname, tab) => {
     where.loc = { pathname }
     act(() => { root.render(<TabBar onStart={() => {}} />) })

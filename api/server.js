@@ -14,6 +14,7 @@ import webpush from 'web-push';
 import * as coachConfig from './coach/config.js';
 import * as coachJobs from './coach/jobs.js';
 import { coachRoutes } from './coach/routes.js';
+import * as mealAI from './meals/analyze.js';
 import { startCadence } from './coach/cadence.js';
 import { startWarmup } from './coach/warmup.js';
 import { dayReminderPush, nudgePush, restTimerPush, testPush } from './push-messages.js';
@@ -48,12 +49,15 @@ const PORT = +(process.env.PORT || 3000);
 const DATA = process.env.DATA_DIR || '/data';
 const RP_ID = process.env.RP_ID || 'localhost';
 const ORIGIN = process.env.ORIGIN || 'http://localhost:8080';
-const RP_NAME = process.env.RP_NAME || 'openGym';
+const RP_NAME = process.env.RP_NAME || 'Retake Gym';
 // Admin dashboard (issue): admins are matched by uid (or the admin flag FIRST_USER_ADMIN sets);
 // INVITE_ONLY gates new signups behind a code the admin generates. Off by default, so a fresh
 // self-hosted instance stays open.
 const ADMIN_UIDS = (process.env.ADMIN_UIDS || '').split(',').map(s => s.trim()).filter(Boolean);
 const INVITE_ONLY = /^(1|true|yes|on)$/i.test(process.env.INVITE_ONLY || '');
+// With FIRST_USER_ADMIN, the very first profile of an instance needs no invite: it is the admin
+// who makes the invites, and without this an invite-only fresh install could never get one.
+const inviteNeeded = () => INVITE_ONLY && !(FIRST_USER_ADMIN && db.users.length === 0);
 // The first profile made on an instance with no profiles at all becomes its admin (#328), so a
 // fresh install has someone who can open the admin dashboard without editing ADMIN_UIDS and
 // restarting. Stored on the user record (user.admin), which isAdmin already honours. It is
@@ -1405,8 +1409,8 @@ const passwordRoutes = {
     if (!name) return json(res, 400, { error: 'name required', code: 'missing' });
     const code = text(body.code).trim().toUpperCase();
     const invite = () => db.invites.find(i => i.code === code && !i.usedBy && !i.revoked);
-    if (INVITE_ONLY && addressPaused(req, res, 'signup')) return;
-    if (INVITE_ONLY && !invite()) {
+    if (inviteNeeded() && addressPaused(req, res, 'signup')) return;
+    if (inviteNeeded() && !invite()) {
       audit(req, 'auth.register.denied', { ok: false, name, msg: 'invite-rejected' });
       strikeAddress(req, 'signup');
       return json(res, 403, { error: 'a valid invite code is required', code: 'invite' });
@@ -1436,7 +1440,7 @@ const passwordRoutes = {
     if (email && addressPaused(req, res, 'email')) return;
     const h = await hashPassword(body.password);
     let inv = null;
-    if (INVITE_ONLY) {
+    if (inviteNeeded()) {
       inv = invite();
       if (!inv) {
         audit(req, 'auth.register.fail', { ok: false, name, msg: 'invite-invalid' });
@@ -2104,7 +2108,7 @@ const routes = {
     // were not signed in when you asked", and would re-ask on every sign-in on every instance
     // that has no Coach. The key's absence is that answer.
     json(res, 200, {
-      invite_only: INVITE_ONLY, allow_guest: ALLOW_GUEST,
+      invite_only: inviteNeeded(), allow_guest: ALLOW_GUEST,
       // Only when on, so an instance without passwords answers exactly as it did before (#118).
       ...(PASSWORD_LOGIN ? { password_login: true } : {}),
       // Public: the sign-in screen is the first thing that reads it.
@@ -2113,6 +2117,8 @@ const routes = {
       // block is how the app knows this server does not take photos and videos at all.
       ...(MEDIA_ON ? { media: mediaConfig(MEDIA_LIMITS) } : {}),
       ...(readSession(req) ? { coach: coachConfig.publicConfig() } : {}),
+      // Retake Gym: whether this server analyses meal photos and descriptions (GEMINI_API_KEY or ANTHROPIC_API_KEY set).
+      ...(readSession(req) && mealAI.isEnabled() ? { meal_ai: true } : {}),
       // Which integrations this server offers (only to a session, like the Coach block). Absent
       // with INTEGRATIONS unset, which is how the app knows to show the server cards as off.
       ...(readSession(req) && integrations.publicConfig() ? { integrations: integrations.publicConfig() } : {})
@@ -2139,7 +2145,7 @@ const routes = {
     const name = text(body.name).trim().slice(0, 40);
     if (!name) return json(res, 400, { error: 'name required' });
     const code = text(body.code).trim().toUpperCase();
-    if (INVITE_ONLY && !db.invites.some(i => i.code === code && !i.usedBy && !i.revoked)) {
+    if (inviteNeeded() && !db.invites.some(i => i.code === code && !i.usedBy && !i.revoked)) {
       // The rejected code itself is never recorded — a near-miss guess in the log is a liability.
       audit(req, 'auth.register.denied', { ok: false, name, msg: 'invite-rejected' });
       return json(res, 403, { error: 'a valid invite code is required', code: 'invite' });
@@ -2188,7 +2194,7 @@ const routes = {
     }
     // Re-check the invite at the last moment (it may have been used/revoked since options), then burn it.
     let invite = null;
-    if (INVITE_ONLY) {
+    if (inviteNeeded()) {
       invite = db.invites.find(i => i.code === c.code && !i.usedBy && !i.revoked);
       if (!invite) {
         audit(req, 'auth.register.fail', { ok: false, name: c.name, msg: 'invite-invalid' });
@@ -2969,6 +2975,21 @@ const routes = {
     json(res, 200, { ok: true });
   },
 
+  /* ---------- Retake Gym: AI meal logging ---------- */
+  // A photo and/or a description in, the foods with portions and macros out (meals/analyze.js).
+  // Nothing is stored here: the app shows the answer for review and saves the meal in its state.
+  'POST /api/meals/analyze': async (req, res) => {
+    const user = readSession(req);
+    if (!user) return json(res, 401, { error: 'not signed in' });
+    if (!mealAI.isEnabled()) return json(res, 503, { error: 'meal AI is not set up on this server', code: 'off' });
+    const parsed = mealAI.parseRequest(await readBody(req));
+    if (parsed.error) return json(res, 400, { error: parsed.error, code: 'invalid' });
+    if (!mealAI.takeQuota(user.id)) return json(res, 429, { error: 'daily limit of meal analyses reached', code: 'cap' });
+    const out = await mealAI.analyzeMeal(parsed);
+    if (!out.ok) return json(res, out.status, { error: out.error });
+    json(res, 200, out.meal);
+  },
+
   /* ---------- AI Coach ---------- */
   // Routes live in coach/routes.js and are handed the helpers above rather than importing
   // them: they are closures over db and SECRET, and passing them in keeps that module free of
@@ -3127,7 +3148,7 @@ server.headersTimeout = 60000;
 // port that was actually bound: with PORT=0 the OS picks one, and a caller that did not choose it
 // (the tests spawn the server that way, and so does anyone running two instances on one box) has
 // no other way to learn it.
-server.listen(PORT, () => console.log(`gym-api on :${server.address().port} (rpID=${RP_ID}, origin=${ORIGIN})`));
+server.listen(PORT, () => console.log(`gym-api on :${server.address().port} (rpID=${RP_ID}, origin=${ORIGIN}, meal AI: ${mealAI.providerOf() || "off"})`));
 
 // The server's own command for a locked-out owner or admin (#584, recover.js): asked over a local
 // socket only this process's user can open (admin-socket.js explains why not by editing db.json).

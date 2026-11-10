@@ -66,7 +66,7 @@ let descs = null                // { exId: description } for the current languag
 let enDescs = null              // { exId: description } in English (exercise-desc/en.js)
 let detailsLoader = null        // registered by i18n.js; fetches the two English packs above
 let detailsAsked = false
-let enParens = true               // whether translated names show the English original in parentheses
+let enParens = false              // whether translated names show the English original in parentheses
 let enOnly = false                // whether translated names are replaced entirely by the English original
 let version = 0                 // bumped on every setLang; drives the React subscription selector
 
