@@ -83,9 +83,24 @@ test('Gemini blocks and cut-offs become errors', async () => {
   assert.equal((await analyzeMeal(parseRequest({ text: 'x' }), { provider, create: async () => { throw Object.assign(new Error('q'), { status: 429 }); } })).status, 429);
 });
 
-test('a Google Cloud express key goes to Vertex, an AI Studio key to the Gemini API', async () => {
+test('keys go to the Gemini API first unless GEMINI_BACKEND pins Vertex', async () => {
   const { geminiBackendFor } = await import('../meals/analyze.js');
   assert.equal(geminiBackendFor({ GEMINI_API_KEY: 'AIzaSyX' }), 'gemini');
-  assert.equal(geminiBackendFor({ GEMINI_API_KEY: ' AQ.Ab8RN6L_x' }), 'vertex');
-  assert.equal(geminiBackendFor({ GEMINI_API_KEY: 'AQ.x', GEMINI_BACKEND: 'gemini' }), 'gemini');
+  assert.equal(geminiBackendFor({ GEMINI_API_KEY: 'AQ.Ab8RN6L_x' }), 'gemini');
+  assert.equal(geminiBackendFor({ GEMINI_API_KEY: 'AQ.x', GEMINI_BACKEND: 'vertex' }), 'vertex');
+});
+
+test('a busy Gemini model falls through to the next one', async () => {
+  const tried = [];
+  const create = async p => {
+    tried.push(p.model);
+    if (tried.length === 1) throw Object.assign(new Error('high demand'), { status: 503 });
+    return { candidates: [{ finishReason: 'STOP' }], text: JSON.stringify({ title: 'x', notes: '', items: [{ name: 'Ovo', grams: 50, kcal: 70, protein: 6, carbs: 0, fat: 5, fiber: 0, confidence: 0.9 }] }) };
+  };
+  const r = await analyzeMeal(parseRequest({ text: 'ovo' }), { env: {}, provider: 'gemini', create });
+  assert.ok(r.ok);
+  assert.equal(tried[0], DEFAULT_MODELS.gemini);
+  assert.equal(tried.length, 2);
+  const all = await analyzeMeal(parseRequest({ text: 'ovo' }), { env: {}, provider: 'gemini', create: async () => { throw Object.assign(new Error('busy'), { status: 503 }); } });
+  assert.equal(all.status, 429);
 });

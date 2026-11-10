@@ -19,6 +19,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenAI } from '@google/genai';
 
 export const DEFAULT_MODELS = { gemini: 'gemini-3.8-flash', anthropic: 'claude-opus-5-5' };
+// Tried in order after the configured Gemini model when it is overloaded or missing.
+export const GEMINI_FALLBACKS = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-flash-lite-latest'];
 export const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 export const MAX_TEXT = 1000;
 const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
@@ -134,14 +136,14 @@ const geminiClients = {};
 let geminiBackend = null;   // the one that last answered: 'gemini' (AI Studio) or 'vertex'
 
 /**
- * Which Google backend a key belongs to. AI Studio keys ("AIza…") call the Gemini API; Google
- * Cloud / Vertex AI express-mode keys ("AQ.…") only work against Vertex AI. GEMINI_BACKEND
- * (gemini | vertex) overrides the guess.
+ * Which Google backend to try first: the Gemini API (AI Studio keys, "AIza…" and the newer
+ * "AQ.…"). A key it refuses is tried on Vertex AI (express-mode keys). GEMINI_BACKEND
+ * (gemini | vertex) pins one.
  */
 export function geminiBackendFor(env = process.env) {
   const want = (env.GEMINI_BACKEND || '').trim().toLowerCase();
   if (want === 'vertex' || want === 'gemini') return want;
-  return /^AQ\./.test((env.GEMINI_API_KEY || '').trim()) ? 'vertex' : 'gemini';
+  return 'gemini';
 }
 
 /** One generateContent call; an auth refusal from the guessed backend is retried on the other. */
@@ -191,19 +193,31 @@ async function viaGemini(req, env, create) {
   const parts = [];
   if (req.image) parts.push({ inlineData: { mimeType: req.image.mediaType, data: req.image.data } });
   parts.push({ text: buildMessages({ ...req, image: null })[0].content[0].text });
-  let res;
-  try {
-    res = await call({
-      model: (env.MEAL_AI_MODEL || '').trim() || DEFAULT_MODELS.gemini,
-      contents: [{ role: 'user', parts }],
-      config: {
-        systemInstruction: SYSTEM_PROMPT,
-        responseMimeType: 'application/json',
-        responseJsonSchema: MEAL_SCHEMA,
-        maxOutputTokens: 4000
-      }
-    });
-  } catch (e) { return failed(e); }
+  // A busy model (503 "high demand", 500, 429) is tried again on the next one in the list.
+  const models = [...new Set([(env.MEAL_AI_MODEL || '').trim() || DEFAULT_MODELS.gemini, ...GEMINI_FALLBACKS])];
+  let res, lastErr;
+  for (const model of models) {
+    try {
+      res = await call({
+        model,
+        contents: [{ role: 'user', parts }],
+        config: {
+          systemInstruction: SYSTEM_PROMPT,
+          responseMimeType: 'application/json',
+          responseJsonSchema: MEAL_SCHEMA,
+          maxOutputTokens: 4000
+        }
+      });
+      lastErr = null;
+      break;
+    } catch (e) {
+      lastErr = e;
+      const st = e?.status ?? e?.code;
+      if (![429, 500, 503, 404].includes(st)) break;
+      console.error(`meal AI: ${model} answered ${st}, trying the next model`);
+    }
+  }
+  if (lastErr) return failed(lastErr?.status === 503 ? Object.assign(lastErr, { status: 429 }) : lastErr);
   const reason = res?.candidates?.[0]?.finishReason;
   if (reason && reason !== 'STOP') console.error('meal AI gemini finish:', reason, res?.promptFeedback?.blockReason || '');
   if (res?.promptFeedback?.blockReason || reason === 'SAFETY' || reason === 'PROHIBITED_CONTENT') {
