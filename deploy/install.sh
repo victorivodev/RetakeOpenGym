@@ -13,6 +13,16 @@ ROOT="$(pwd)"
 
 say() { printf '\n\033[1;33m==> %s\033[0m\n' "$*"; }
 
+# 0. Memória extra (swap) em máquinas pequenas, como a VM.Standard.E2.1.Micro de 1 GB: sem ela o
+#    build do app fica sem memória.
+MEM_MB=$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)
+if [ "$MEM_MB" -lt 3000 ] && ! swapon --show | grep -q .; then
+  say "Máquina com ${MEM_MB} MB de memória: criando 3 GB de swap"
+  fallocate -l 3G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=3072
+  chmod 600 /swapfile && mkswap /swapfile >/dev/null && swapon /swapfile
+  grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+fi
+
 # 1. Docker
 if ! command -v docker >/dev/null 2>&1; then
   say "Instalando o Docker"
