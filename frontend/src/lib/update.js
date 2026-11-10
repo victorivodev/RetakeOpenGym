@@ -12,7 +12,7 @@
 import { MOBILE } from './mobile.js'
 import { APK_VARIANTS, APK_VARIANT } from './apk-variant.js'
 
-const REPO = 'DuarteSantos8/Retake Gym'
+const REPO = 'victorivodev/RetakeOpenGym'
 const LATEST_URL = `https://api.github.com/repos/${REPO}/releases/latest`
 export const RELEASES_PAGE = `https://github.com/${REPO}/releases/latest`
 
@@ -70,15 +70,15 @@ async function fetchLatest() {
 
 /**
  * Since v1.4.2 a release carries three sideloaded APKs, the same app with different animations
- * built in: Standard (180 px, Retake Gym-<v>.apk), Plus (240 px, Retake Gym-Plus-<v>.apk) and HD
- * (360 px, Retake Gym-HD-<v>.apk). Each installed APK only ever updates to its own kind, so a phone
+ * built in: Standard (180 px, RetakeGym-<v>.apk), Plus (240 px, RetakeGym-Plus-<v>.apk) and HD
+ * (360 px, RetakeGym-HD-<v>.apk). Each installed APK only ever updates to its own kind, so a phone
  * that picked HD keeps HD, and nobody is handed a download twice the size they never asked for.
  * The build says which kind it is (lib/apk-variant.js).
  * The checksum is the one named after the chosen APK, never just the first .sha256 in the list.
  * A release without an APK of this kind: no direct download (the update row then opens the
  * releases page), rather than quietly swapping it for another kind.
  * Phones from before v1.4.2 take the first .apk of the list, and GitHub sorts assets by name:
- * "Retake Gym-1…" comes before "Retake Gym-HD-…" and "Retake Gym-Plus-…", so they land on Standard.
+ * "RetakeGym-1…" comes before "RetakeGym-HD-…" and "RetakeGym-Plus-…", so they land on Standard.
  */
 export { APK_VARIANTS, APK_VARIANT }
 const tagged = (name, tag) => new RegExp(`(^|[-_.])${tag}([-_.]|$)`, 'i').test(name)

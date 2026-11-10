@@ -1,0 +1,93 @@
+# Retake Gym: builds the Android app (APK) for installing outside any store.
+#
+#   - a tag v<version> (e.g. v1.4.5) publishes a GitHub release with RetakeGym-<version>.apk and its
+#     .sha256; the app in the phones finds it there and offers the update (lib/update.js);
+#   - "Run workflow" in the Actions tab builds the same APK and keeps it as a downloadable artifact.
+#
+# Every APK is signed with the same key, from these repository secrets, so a new version installs
+# over the old one and keeps the data:
+#   ANDROID_KEYSTORE_BASE64   the keystore (.jks), base64
+#   ANDROID_KEYSTORE_PASSWORD its password (also the key's)
+#   ANDROID_KEY_ALIAS         the key alias
+name: Android APK
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-read-only: true
+      - name: Signing key present
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          [ -n "$KS" ] || { echo "::error::Missing the ANDROID_KEYSTORE_BASE64 secret (see the top of this file)."; exit 1; }
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+        working-directory: frontend
+      - name: Version
+        id: v
+        run: |
+          VER=$(node -p "require('./frontend/package.json').version")
+          if [ "${GITHUB_REF_TYPE}" = tag ] && [ "${GITHUB_REF_NAME#v}" != "$VER" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match frontend/package.json version $VER"; exit 1
+          fi
+          echo "ver=$VER" >> "$GITHUB_OUTPUT"
+      - name: Phone bundle + cap sync
+        run: npm run build:mobile
+        working-directory: frontend
+        env:
+          VITE_APK_VARIANT: standard
+      - name: Unsigned APK
+        run: ./gradlew --no-daemon assembleSideloadRelease
+        working-directory: frontend/android
+      - name: Sign
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          VER: ${{ steps.v.outputs.ver }}
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          mkdir -p out
+          echo "$KS" | base64 -d > "$RUNNER_TEMP/release.jks"
+          "$BT/zipalign" -f -p 4 frontend/android/app/build/outputs/apk/sideload/release/app-sideload-release-unsigned.apk "$RUNNER_TEMP/aligned.apk"
+          "$BT/apksigner" sign --ks "$RUNNER_TEMP/release.jks" --ks-pass env:KS_PASS --ks-key-alias "$KS_ALIAS" \
+            --out "out/RetakeGym-$VER.apk" "$RUNNER_TEMP/aligned.apk"
+          rm -f "$RUNNER_TEMP/release.jks" "out/RetakeGym-$VER.apk.idsig"
+          "$BT/apksigner" verify --print-certs "out/RetakeGym-$VER.apk" | grep -i "SHA-256"
+          (cd out && sha256sum "RetakeGym-$VER.apk" > "RetakeGym-$VER.apk.sha256")
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: RetakeGym-${{ steps.v.outputs.ver }}-apk
+          path: out/
+          retention-days: 30
+      - name: Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VER: ${{ steps.v.outputs.ver }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" out/* -R "$GITHUB_REPOSITORY" --title "Retake Gym $VER" \
+            --notes "Android: baixe **RetakeGym-$VER.apk** no celular e abra para instalar (permita instalar de fontes desconhecidas quando o Android pedir). Quem já tem o app recebe o aviso de atualização em Configurações."
