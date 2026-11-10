@@ -164,3 +164,11 @@ test('set-login gives a passkey profile an e-mail, a user name and a password', 
   assert.equal(login.status, 200);
   assert.equal(login.body.user.id, 'u1');
 });
+
+test('with INVITE_ONLY the e-mail sign-up still needs a valid invite, from the app too', async t => {
+  const h = await startServer(t, { env: { INVITE_ONLY: '1' }, users: [withPassword('u0', 'Victor', { username: 'victor', email: 'v@example.com' })] });
+  assert.equal((await h.req('GET', '/api/config')).body.invite_only, true);
+  const body = { name: 'Ana', username: 'ana', email: 'ana@example.com', password: GOOD };
+  assert.equal((await h.req('POST', '/api/app/register', { body, ...APP })).body.code, 'invite');
+  assert.equal((await h.req('POST', '/api/app/register', { body: { ...body, code: 'NOPE' }, ...APP })).body.code, 'invite');
+});

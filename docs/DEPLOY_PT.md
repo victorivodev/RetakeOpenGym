@@ -97,10 +97,10 @@ de 5 a 10 minutos.
 1. Abra `https://gym.retaketecnologia.com.br` (o seu endereço).
 2. Toque em **Criar conta** e crie **a sua** primeiro (nome, @usuário, e-mail e senha): a primeira
    conta vira o administrador.
-3. Depois é só mandar o link para quem você quiser: cada pessoa cria a própria conta com e-mail
-   e senha. Para exigir um código de convite no cadastro, troque `INVITE_ONLY=0` por
-   `INVITE_ONLY=1` no `.env` e rode o `install.sh` de novo; os códigos saem em
-   **Configurações → Painel de administração**.
+3. O cadastro é só por convite: gere um código em **Configurações → Painel de administração →
+   Convites** e mande junto com o link. A pessoa toca em **Criar conta**, preenche nome, @usuário,
+   e-mail, senha e o código. Cada código vale para uma conta. (Para abrir o cadastro a qualquer
+   um, troque `INVITE_ONLY=1` por `INVITE_ONLY=0` no `.env` e rode o `install.sh` de novo.)
 
 **Esqueceu a senha?** Quem esqueceu pede um código ao administrador (**Painel de administração →
 a pessoa → Redefinir senha**) e digita em **Esqueceu a senha?** na tela de login. Para a conta do
@@ -179,6 +179,7 @@ cd ~/retakegym && sudo docker compose -f deploy/docker-compose.yml logs -f --tai
 
 - O código é público (licença AGPL), mas **os dados não**: ficam só nesta VPS, em `data/`.
 - A chave do Gemini e os segredos ficam só no `.env` do servidor, que nunca vai para o GitHub.
+- Só cria conta quem recebe um código de convite seu.
 - Todo acesso passa por HTTPS. As senhas são guardadas só como hash (scrypt), nunca em texto.
 - Senha com no mínimo 10 caracteres; as óbvias ("senha123456"...) são recusadas.
 - Senhas erradas pausam a conta e o endereço de quem tenta, cada um com o seu limite: o Caddy

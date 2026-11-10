@@ -57,6 +57,14 @@ export function EmailAuth({ server = null, onDone, start = 'signin' }) {
   const [needInvite, setNeedInvite] = useState(!server && !!config?.invite_only)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(null)
+  // The phone has no config of its server before it signs in: ask it whether sign-up needs an
+  // invite, so the field is there from the start rather than after a refusal.
+  useEffect(() => {
+    if (!server) return
+    let live = true
+    fetch(server.replace(/\/$/, '') + '/api/config').then(r => r.json()).then(c => { if (live && c?.invite_only) setNeedInvite(true) }).catch(() => {})
+    return () => { live = false }
+  }, [server])
   const first = useRef(null)
   useEffect(() => { setErr(null); const tm = setTimeout(() => first.current?.focus?.(), 200); return () => clearTimeout(tm) }, [mode])
 
