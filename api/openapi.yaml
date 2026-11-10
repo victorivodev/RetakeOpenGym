@@ -164,6 +164,8 @@ tags:
     description: Web Push (VAPID) subscriptions, rest-timer and test pushes
   - name: activity
     description: Live-workout presence heartbeat
+  - name: social
+    description: Friends, posts, challenges and weekly leagues
   - name: meals
     description: >-
       Retake Gym's AI meal logging, with Google Gemini (`GEMINI_API_KEY`) or Claude
@@ -191,6 +193,121 @@ security:
   - bearerAuth: []
 
 paths:
+  /api/social:
+    get:
+      tags: [social]
+      operationId: getSocialHome
+      summary: Read social profile, friends and feed
+      responses:
+        '200': { description: Social home }
+        '401': { description: Sign in required }
+  /api/social/profile:
+    put:
+      tags: [social]
+      operationId: updateSocialProfile
+      summary: Update profile bio, goal and visibility
+      responses:
+        '200': { description: Saved }
+        '401': { description: Sign in required }
+  /api/social/friend:
+    post:
+      tags: [social]
+      operationId: inviteSocialFriend
+      summary: Send a friend request by username
+      responses:
+        '200': { description: Request sent }
+        '404': { description: Username not found }
+  /api/social/friend/accept:
+    post:
+      tags: [social]
+      operationId: acceptSocialFriend
+      summary: Accept a friend request
+      responses:
+        '200': { description: Friendship accepted }
+  /api/social/friend/remove:
+    post:
+      tags: [social]
+      operationId: removeSocialFriend
+      summary: Remove a friendship or pending request
+      responses:
+        '200': { description: Removed }
+  /api/social/invite:
+    post:
+      tags: [social]
+      operationId: createSocialInvite
+      summary: Create a one-day friendship code
+      responses:
+        '200': { description: Invite code }
+  /api/social/invite/redeem:
+    post:
+      tags: [social]
+      operationId: redeemSocialInvite
+      summary: Redeem a friendship code
+      responses:
+        '200': { description: Friendship established }
+  /api/social/post:
+    post:
+      tags: [social]
+      operationId: createSocialPost
+      summary: Publish a social update
+      responses:
+        '201': { description: Post created }
+  /api/social/react:
+    post:
+      tags: [social]
+      operationId: reactToSocialPost
+      summary: React to a post
+      responses:
+        '200': { description: Reaction saved }
+  /api/social/comment:
+    post:
+      tags: [social]
+      operationId: commentOnSocialPost
+      summary: Comment on a post
+      responses:
+        '200': { description: Comment saved }
+  /api/social/ranking:
+    get:
+      tags: [social]
+      operationId: getFriendsRanking
+      summary: Read weekly ranking among friends
+      responses:
+        '200': { description: Weekly ranking }
+  /api/social/challenges:
+    get:
+      tags: [social]
+      operationId: getSocialChallenges
+      summary: List visible group challenges
+      responses:
+        '200': { description: Challenge list }
+    post:
+      tags: [social]
+      operationId: createSocialChallenge
+      summary: Create a weekly or 30-day challenge
+      responses:
+        '201': { description: Challenge created }
+  /api/social/challenges/join:
+    post:
+      tags: [social]
+      operationId: joinSocialChallenge
+      summary: Join a group challenge
+      responses:
+        '200': { description: Joined }
+  /api/social/challenges/checkin:
+    post:
+      tags: [social]
+      operationId: checkInSocialChallenge
+      summary: Record a daily challenge check-in
+      responses:
+        '200': { description: Check-in recorded }
+  /api/social/poke:
+    post:
+      tags: [social]
+      operationId: pokeSocialFriend
+      summary: Send a daily-limited workout poke
+      responses:
+        '200': { description: Poke sent }
+        '429': { description: Daily limit reached }
   /api/health:
     get:
       tags: [meta]

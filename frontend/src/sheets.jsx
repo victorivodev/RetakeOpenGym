@@ -88,6 +88,7 @@ import { buildCombinedEntries, deriveSessionName } from './lib/session-merge.js'
 import { workoutsOn, backfillStart, backfillEnd, completeBackfill, historyAsOf, sessionHistory } from './lib/backfill.js'
 import { moveWorkout, sameWorkout, startTimeOf, durationMinOf, setWorkoutDuration, rebuildPrHistory, MAX_DURATION_MIN, endsInFuture } from './lib/workout-date.js'
 import { editCompletedSession, editLeftEmpty, editedRecord, editChangesNothing } from './lib/session-edit.js'
+import { socialApi } from './lib/api.js'
 import { stampWorkout } from './lib/sync-merge.js'
 import { hrLabel } from './lib/heart-rate.js'
 import { weeklyWeights } from './lib/bodyweight.js'
@@ -4016,6 +4017,8 @@ function KeepInRoutine({ additions }) {
 
 function FinishSummary({ w, prs, e1prs = [], additions = [], close }) {
   const st = useStore(s => s.S)
+  const socialUser = useStore(s => s.user)
+  const [shareDraft, setShareDraft] = useState(false), [shareText, setShareText] = useState(`${w.name || t('Workout complete')} · ${w.d || ''}`), [sharing, setSharing] = useState(false)
   return <div style={{ textAlign: 'center', padding: '8px 0' }}>
     {/* Sticky, so the summary can be left from the top however far it has been scrolled. */}
     <div className="fin-x"><button type="button" className="iconbtn" aria-label={t('Close')} onClick={() => closeThenNav(close, '/home')}><Icon name="xmark" /></button></div>
@@ -4039,6 +4042,16 @@ function FinishSummary({ w, prs, e1prs = [], additions = [], close }) {
           card History's Share as image makes. */}
       {isOn(st, 'motivation') && <Button variant="tinted" icon="share" data-fin-share onClick={() => shareWorkoutSheet(S().workouts.find(x => x.id === w.id) || w)}>{t('Share')}</Button>}
     </div>
+    {socialUser && <div style={{ textAlign: 'start', margin: '12px 0', padding: 12, borderRadius: 14, background: 'var(--surface-2, var(--surface))' }}>
+      {!shareDraft ? <Button variant="tinted" icon="heart" onClick={() => setShareDraft(true)}>{t('Share with friends')}</Button> : <>
+        <div className="small muted" style={{ marginBottom: 8 }}>{t('Review your post. Nothing is shared until you publish it.')}</div>
+        <textarea aria-label={t('Workout post')} maxLength={500} value={shareText} onChange={e => setShareText(e.target.value)} style={{ width: '100%', minHeight: 72 }} />
+        <div className="row" style={{ gap: 8, justifyContent: 'center' }}>
+          <Button variant="primary" disabled={sharing || !shareText.trim()} onClick={async () => { setSharing(true); try { await socialApi.publish({ kind: 'workout', text: shareText, scope: 'friends' }); ui().toast(t('Post published')) ; setShareDraft(false) } catch (e) { ui().toast(e.message) } finally { setSharing(false) } }}>{t('Publish')}</Button>
+          <Button onClick={() => setShareDraft(false)}>{t('Skip')}</Button>
+        </div>
+      </>}
+    </div>}
     <div style={{ height: 14 }} />
     <h4 className="sec" style={{ textAlign: 'start' }}>{t('What you just trained')}</h4>
     <BodyMap load={loadOfWorkouts([w])} body={st.body} />

@@ -455,6 +455,24 @@ export async function appAuth(serverBase, kind, body, { probeMs = PROBE_MS } = {
 // The profile's display name and user name, and its photo (Settings → Profile).
 export const updateProfile = body => post('/api/account/profile', body)
 export const setAvatar = avatar => post('/api/account/avatar', { avatar: avatar || null })
+export const socialApi = {
+  get: q => api('/api/social' + (q ? '?q=' + encodeURIComponent(q) : '')),
+  profile: body => api('/api/social/profile', { method: 'PUT', body: JSON.stringify(body) }),
+  friend: username => post('/api/social/friend', { username }),
+  makeInvite: () => post('/api/social/invite', {}),
+  redeemInvite: code => post('/api/social/invite/redeem', { code }),
+  accept: id => post('/api/social/friend/accept', { id }),
+  removeFriend: id => post('/api/social/friend/remove', { id }),
+  publish: body => post('/api/social/post', body),
+  react: (id, reaction) => post('/api/social/react', { id, reaction }),
+  comment: (id, text) => post('/api/social/comment', { id, text }),
+  ranking: by => api('/api/social/ranking?by=' + encodeURIComponent(by)),
+  challenges: () => api('/api/social/challenges'),
+  createChallenge: body => post('/api/social/challenges', body),
+  joinChallenge: id => post('/api/social/challenges/join', { id }),
+  checkinChallenge: id => post('/api/social/challenges/checkin', { id }),
+  poke: id => post('/api/social/poke', { id })
+}
 export const getAvatar = id => api('/api/account/avatar' + (id ? '?id=' + encodeURIComponent(id) : ''))
 export async function passwordResetRedeem(name, code, next) {
   return (await post('/api/login/password-reset', { name, code, next })).user

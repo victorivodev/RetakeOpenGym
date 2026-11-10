@@ -13,6 +13,7 @@ import Icon from '../components/Icon.jsx'
 import { Button, NumberField, Section, SelectRow } from '../components/ui.jsx'
 import { mealLogSheet } from './MealLog.jsx'
 import { confirmSheet } from '../sheets.jsx'
+import { socialApi } from '../lib/api.js'
 
 // Functions, so the words are looked up in the language showing at the time.
 export const slotName = s => ({ breakfast: t('Breakfast'), lunch: t('Lunch'), snack: t('Snack'), dinner: t('Dinner'), supper: t('Supper') })[s] || s
@@ -112,6 +113,7 @@ export const dietGoalsSheet = () => useUI.getState().openSheet(close => <DietGoa
 
 export default function Diet() {
   const S = useStore(s => s.S)
+  const [shareCalories, setShareCalories] = useState(false)
   const [date, setDate] = useState(todayISO())
   const meals = useMemo(() => mealsList(S.meals), [S.meals])
   const targets = targetsFor(S)
@@ -170,6 +172,7 @@ export default function Diet() {
     </div>
 
     <Button variant="primary" icon="sparkles" className="diet-cta" onClick={() => mealLogSheet({ date })}>{t('Log a meal')}</Button>
+    {useStore.getState().user && <label className="small muted" style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '8px 0' }}><input type="checkbox" checked={shareCalories} onChange={e => setShareCalories(e.target.checked)} />{t('Include calories when sharing meals')}</label>}
 
     <div className="card diet-water">
       <Icon name="drop" />
@@ -193,6 +196,10 @@ export default function Diet() {
               <span className="small muted">{fmtNum(Math.round(s.kcal))} kcal · P {fmtNum(Math.round(s.protein))} · C {fmtNum(Math.round(s.carbs))} · G {fmtNum(Math.round(s.fat))}</span>
             </button>
             <button className="iconbtn" style={{ color: 'var(--red)' }} onClick={() => removeMeal(m)} aria-label={t('Delete')}><Icon name="trash" /></button>
+            {useStore.getState().user && <button className="iconbtn" onClick={async () => {
+              const text = `${m.title || m.items.map(i => i.name).join(', ')} · ${m.date}${shareCalories ? ` · ${Math.round(s.kcal)} kcal` : ''}`
+              try { await socialApi.publish({ kind: 'meal', text, scope: 'friends' }); toast(t('Meal shared with friends')) } catch (e) { toast(e.message) }
+            }} aria-label={t('Share meal')}><Icon name="share" /></button>}
           </div>
         })}
         <button className="lrow tap diet-add" onClick={() => mealLogSheet({ date, slot })}><Icon name="plus" /><span className="lrow-t">{t('Add')}</span></button>

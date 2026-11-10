@@ -221,6 +221,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <a class="side-link" href="#data"><b>Data</b><span>State sync</span></a>
   <a class="side-link" href="#push"><b>Push</b><span>Notifications &amp; rest timer</span></a>
   <a class="side-link" href="#activity"><b>Activity</b><span>Live presence</span></a>
+  <a class="side-link" href="#social"><b>Social</b><span>Friends, feed, challenges &amp; leagues</span></a>
   <a class="side-link" href="#media"><b>Media</b><span>Photos &amp; videos of your exercises &amp; workouts</span></a>
   <a class="side-link" href="#coach"><b>AI Coach</b><span>Plans, reviews, debriefs</span></a>
   <a class="side-link" href="#meals"><b>Meals</b><span>AI meal logging (Retake Gym)</span></a>
@@ -248,7 +249,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <p class="api-facts">
     <span>OpenAPI 3.1.0</span>
     <span>openGym v1.4.3</span>
-    <span>99 endpoints</span>
+    <span>115 endpoints</span>
     <span>AGPL-3.0-or-later</span>
   </p>
 
@@ -2591,6 +2592,381 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="prow rrow">
     <span class="r-code s4">401</span>
     <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+  </div>
+</section>
+
+<section class="api-sec" id="social">
+  <h2>Social</h2>
+  <p class="sub">Friends, posts, challenges and weekly leagues</p>
+  <div class="eps">
+
+<details class="ep" id="op-getSocialHome">
+  <summary>
+    <span class="m get">GET</span>
+    <span class="ep-path"><code>/api/social</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Read social profile, friends and feed</span>
+  </summary>
+  <div class="ep-body">
+
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Social home</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">Sign in required</span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-updateSocialProfile">
+  <summary>
+    <span class="m put">PUT</span>
+    <span class="ep-path"><code>/api/social/profile</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Update profile bio, goal and visibility</span>
+  </summary>
+  <div class="ep-body">
+
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Saved</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">Sign in required</span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-inviteSocialFriend">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/social/friend</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Send a friend request by username</span>
+  </summary>
+  <div class="ep-body">
+
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Request sent</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">Username not found</span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-acceptSocialFriend">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/social/friend/accept</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Accept a friend request</span>
+  </summary>
+  <div class="ep-body">
+
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Friendship accepted</span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-removeSocialFriend">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/social/friend/remove</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Remove a friendship or pending request</span>
+  </summary>
+  <div class="ep-body">
+
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Removed</span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-createSocialInvite">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/social/invite</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Create a one-day friendship code</span>
+  </summary>
+  <div class="ep-body">
+
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Invite code</span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-redeemSocialInvite">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/social/invite/redeem</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Redeem a friendship code</span>
+  </summary>
+  <div class="ep-body">
+
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Friendship established</span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-createSocialPost">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/social/post</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Publish a social update</span>
+  </summary>
+  <div class="ep-body">
+
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">201</span>
+    <span class="p-desc">Post created</span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-reactToSocialPost">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/social/react</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">React to a post</span>
+  </summary>
+  <div class="ep-body">
+
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Reaction saved</span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-commentOnSocialPost">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/social/comment</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Comment on a post</span>
+  </summary>
+  <div class="ep-body">
+
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Comment saved</span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-getFriendsRanking">
+  <summary>
+    <span class="m get">GET</span>
+    <span class="ep-path"><code>/api/social/ranking</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Read weekly ranking among friends</span>
+  </summary>
+  <div class="ep-body">
+
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Weekly ranking</span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-getSocialChallenges">
+  <summary>
+    <span class="m get">GET</span>
+    <span class="ep-path"><code>/api/social/challenges</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">List visible group challenges</span>
+  </summary>
+  <div class="ep-body">
+
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Challenge list</span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-createSocialChallenge">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/social/challenges</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Create a weekly or 30-day challenge</span>
+  </summary>
+  <div class="ep-body">
+
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">201</span>
+    <span class="p-desc">Challenge created</span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-joinSocialChallenge">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/social/challenges/join</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Join a group challenge</span>
+  </summary>
+  <div class="ep-body">
+
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Joined</span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-checkInSocialChallenge">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/social/challenges/checkin</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Record a daily challenge check-in</span>
+  </summary>
+  <div class="ep-body">
+
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Check-in recorded</span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-pokeSocialFriend">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/social/poke</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Send a daily-limited workout poke</span>
+  </summary>
+  <div class="ep-body">
+
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Poke sent</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">429</span>
+    <span class="p-desc">Daily limit reached</span>
   </div>
     </div>
   </div>
