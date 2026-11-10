@@ -97,3 +97,9 @@ body {
 .meal-num-f .meal-num-l{color:#ffb95f}
 .meal-item-warn{color:var(--orange);margin-top:8px}
 .meal-total{padding:4px 2px 14px;color:var(--label-2)}
+
+/* The sign-in logo (components/RetakeLogo.jsx): the gold-on-navy one by default, the darker-gold
+   one on the light theme. */
+.retake-logo-light { display: none; }
+:root[data-theme="light"] .retake-logo-dark { display: none; }
+:root[data-theme="light"] .retake-logo-light { display: block; }
