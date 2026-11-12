@@ -455,6 +455,38 @@ export async function appAuth(serverBase, kind, body, { probeMs = PROBE_MS } = {
 // The profile's display name and user name, and its photo (Settings → Profile).
 export const updateProfile = body => post('/api/account/profile', body)
 export const setAvatar = avatar => post('/api/account/avatar', { avatar: avatar || null })
+// Retake Gym friends network (api/social.js). Every call carries the phone's own day, which the
+// server uses for check-ins, streaks and the week (it runs in UTC).
+// The address friends open to sign up: the paired server on a phone, this site on the web.
+export const serverAddress = () => remoteBase || (location.origin + appBase().replace(/\/$/, ''))
+const localDay = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10) }
+const withDay = (path, q = {}) => path + '?' + new URLSearchParams({ ...q, today: localDay() })
+export const socialApi = {
+  get: q => api(withDay('/api/social', q ? { q } : {})),
+  unread: () => api('/api/social/unread'),
+  seen: () => post('/api/social/seen', {}),
+  person: username => api(withDay('/api/social/person', { username })),
+  profile: body => api('/api/social/profile', { method: 'PUT', body: JSON.stringify(body) }),
+  friend: username => post('/api/social/friend', { username }),
+  makeInvite: () => post('/api/social/invite', {}),
+  redeemInvite: code => post('/api/social/invite/redeem', { code }),
+  appInvite: () => post('/api/social/app-invite', {}),
+  accept: id => post('/api/social/friend/accept', { id }),
+  removeFriend: id => post('/api/social/friend/remove', { id }),
+  publish: body => post('/api/social/post', body),
+  removePost: id => post('/api/social/post/delete', { id }),
+  photo: id => api('/api/social/photo?id=' + encodeURIComponent(id)),
+  react: (id, reaction) => post('/api/social/react', { id, reaction }),
+  comment: (id, text) => post('/api/social/comment', { id, text }),
+  removeComment: (postId, id) => post('/api/social/comment/delete', { post: postId, id }),
+  ranking: () => api(withDay('/api/social/ranking')),
+  challenges: () => api(withDay('/api/social/challenges')),
+  createChallenge: body => post('/api/social/challenges', { ...body, today: localDay() }),
+  joinChallenge: id => post('/api/social/challenges/join', { id, today: localDay() }),
+  leaveChallenge: id => post('/api/social/challenges/leave', { id }),
+  checkinChallenge: id => post('/api/social/challenges/checkin', { id, today: localDay() }),
+  poke: id => post('/api/social/poke', { id, today: localDay() })
+}
 export const getAvatar = id => api('/api/account/avatar' + (id ? '?id=' + encodeURIComponent(id) : ''))
 export async function passwordResetRedeem(name, code, next) {
   return (await post('/api/login/password-reset', { name, code, next })).user

@@ -13,6 +13,7 @@ import Icon from '../components/Icon.jsx'
 import { Button, NumberField, Section, SelectRow } from '../components/ui.jsx'
 import { mealLogSheet } from './MealLog.jsx'
 import { confirmSheet } from '../sheets.jsx'
+import { Composer } from '../components/SocialParts.jsx'
 
 // Functions, so the words are looked up in the language showing at the time.
 export const slotName = s => ({ breakfast: t('Breakfast'), lunch: t('Lunch'), snack: t('Snack'), dinner: t('Dinner'), supper: t('Supper') })[s] || s
@@ -108,6 +109,11 @@ function DietGoals({ close }) {
   </>
 }
 
+// Retake Gym: post a meal for friends (text the person can change, and one photo).
+const shareMealSheet = (m, s) => useUI.getState().openSheet(close => <>
+  <h3>{t('Post for my friends')}</h3>
+  <Composer kind="meal" initialText={`${m.title || slotName(m.slot)} · ${m.items.map(i => i.name).join(', ')}`.slice(0, 300) + ` · ${fmtNum(Math.round(s.kcal))} kcal`} onDone={close} onCancel={close} />
+</>)
 export const dietGoalsSheet = () => useUI.getState().openSheet(close => <DietGoals close={close} />)
 
 export default function Diet() {
@@ -193,6 +199,7 @@ export default function Diet() {
               <span className="small muted">{fmtNum(Math.round(s.kcal))} kcal · P {fmtNum(Math.round(s.protein))} · C {fmtNum(Math.round(s.carbs))} · G {fmtNum(Math.round(s.fat))}</span>
             </button>
             <button className="iconbtn" style={{ color: 'var(--red)' }} onClick={() => removeMeal(m)} aria-label={t('Delete')}><Icon name="trash" /></button>
+            {useStore.getState().user && <button className="iconbtn" onClick={() => shareMealSheet(m, s)} aria-label={t('Post for my friends')}><Icon name="share" /></button>}
           </div>
         })}
         <button className="lrow tap diet-add" onClick={() => mealLogSheet({ date, slot })}><Icon name="plus" /><span className="lrow-t">{t('Add')}</span></button>

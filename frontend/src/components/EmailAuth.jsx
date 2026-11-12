@@ -42,9 +42,15 @@ const gap = <div style={{ height: 10 }} />
 
 /* `server`: the phone's server (absolute address). Without it this is the web app on its own
    server. `onDone` runs once signed in. `start`: which form opens first. */
+// A friend's invite link (Social → Invite a friend) opens sign-up with its code filled in.
+const linkInvite = () => {
+  try { return (new URLSearchParams(location.search).get('convite') || '').trim().toUpperCase().slice(0, 40) } catch { return '' }
+}
+
 export function EmailAuth({ server = null, onDone, start = 'signin' }) {
   const config = useStore(s => s.config)
-  const [mode, setMode] = useState(start)   // 'signin' | 'register' | 'reset'
+  const [fromLink] = useState(linkInvite)
+  const [mode, setMode] = useState(fromLink ? 'register' : start)   // 'signin' | 'register' | 'reset'
   const [id, setId] = useState('')
   const [pw, setPw] = useState('')
   const [again, setAgain] = useState('')
@@ -53,8 +59,8 @@ export function EmailAuth({ server = null, onDone, start = 'signin' }) {
   const [userTouched, setUserTouched] = useState(false)
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
-  const [invite, setInvite] = useState('')
-  const [needInvite, setNeedInvite] = useState(!server && !!config?.invite_only)
+  const [invite, setInvite] = useState(fromLink)
+  const [needInvite, setNeedInvite] = useState(!!fromLink || (!server && !!config?.invite_only))
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(null)
   // The phone has no config of its server before it signs in: ask it whether sign-up needs an

@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 const API = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ROOT = path.join(API, '..');
-const read = f => fs.readFileSync(f, 'utf8');
+const read = f => fs.readFileSync(f, 'utf8').replace(/\r\n/g, '\n');
 const spec = read(path.join(API, 'openapi.yaml'));
 
 /** Every `'GET /api/x': async (req, res)` key in the route table. */

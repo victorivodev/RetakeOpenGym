@@ -137,6 +137,7 @@ const TAGS = {
   data: { title: 'Data', side: 'State sync' },
   push: { title: 'Push', side: 'Notifications &amp; rest timer' },
   activity: { title: 'Activity', side: 'Live presence' },
+  social: { title: 'Social', side: 'Friends, feed, challenges &amp; leagues' },
   media: { title: 'Media', side: 'Photos &amp; videos of your exercises &amp; workouts' },
   // A tag missing from this map renders nowhere at all, silently, so every tag in the
   // spec needs a line here.
