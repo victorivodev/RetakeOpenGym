@@ -39,6 +39,7 @@ import { createMediaStore, mediaLimits, mediaConfig, MediaError, HASH_RE } from 
 import { effectiveRoutineId } from './queue.js';
 import { stampPut } from './sync-stamps.js';
 import { atomicWrite as durableWrite } from './durable.js';
+import * as SOCIAL from './social.js';
 import { ipv6Groups, guardedLookup, pushEndpointError, MAX_PUSH_ENDPOINT } from './net-guard.js';
 import { createIntegrations } from './integrations/index.js';
 import { integrationRoutes } from './integrations/routes.js';
@@ -170,12 +171,83 @@ db.creds = db.creds || [];
 db.subs = db.subs || [];
 db.invites = db.invites || [];
 db.deviceLinks = db.deviceLinks || [];   // unused one-time device links, hashed (device-link.js)
-let social = db.social || { profiles: {}, friends: {}, posts: [], challenges: [], pokes: {} };
-delete db.social;
+// Retake Gym: the friends network, in DATA_DIR/social.json (rules in social.js). Post photos live
+// one file each under DATA_DIR/social-photos/, so the feed itself stays small.
 const socialFile = path.join(DATA, 'social.json');
-try { social = JSON.parse(fs.readFileSync(socialFile, 'utf8')); } catch { /* migrate in db.json on first social write */ }
-social.profiles ||= {}; social.friends ||= {}; social.posts ||= []; social.challenges ||= []; social.pokes ||= {}; social.invites ||= {}; social.notifications ||= {};
+const SOCIAL_PHOTOS = path.join(DATA, 'social-photos');
+const socialPhotoFile = id => path.join(SOCIAL_PHOTOS, String(id).replace(/[^A-Za-z0-9-]/g, '') + '.txt');
+let social = SOCIAL.emptySocial();
+try { social = JSON.parse(fs.readFileSync(socialFile, 'utf8')); } catch { /* none yet */ }
+social = SOCIAL.normalizeSocial(social);
 const saveSocial = () => atomicWrite(socialFile, JSON.stringify(social), 0o600);
+// Posts from the first version kept their photo inline: move each one out to its file.
+if (social.posts.some(p => typeof p.photo === 'string')) {
+  fs.mkdirSync(SOCIAL_PHOTOS, { recursive: true, mode: 0o700 });
+  for (const p of social.posts) if (typeof p.photo === 'string') { durableWrite(socialPhotoFile(p.id), p.photo, 0o600); p.photo = true; }
+  saveSocial();
+}
+function befriend(a, b) {
+  for (const [owner, id] of [[a, b], [b, a]]) {
+    const list = social.friends[owner] || [];
+    const x = list.find(f => f.id === id);
+    if (x) { x.status = 'accepted'; delete x.direction; } else list.push({ id, status: 'accepted', at: Date.now() });
+    social.friends[owner] = list;
+  }
+}
+// A profile made with a friend's invite starts as that friend's friend.
+function friendFromInvite(user, inv) {
+  if (!inv?.friendOf || !db.users.some(u => u.id === inv.friendOf)) return;
+  befriend(user.id, inv.friendOf);
+  notifySocial(inv.friendOf, 'friend-joined', user);
+  saveSocial();
+  pushSocial(inv.friendOf, `${user.name} entrou no Retake Gym com o seu convite.`);
+}
+function dropPost(p) {
+  if (p.photo) { try { fs.unlinkSync(socialPhotoFile(p.id)); } catch { /* already gone */ } }
+  social.posts = social.posts.filter(x => x !== p);
+}
+// A reaction or a new challenge from the same person to the same thing replaces the older note.
+function notifySocial(to, kind, from, extra = {}, collapse = false) {
+  if (!to || to === from.id) return;
+  let inbox = social.notifications[to] || [];
+  if (collapse) inbox = inbox.filter(n => !(n.kind === kind && n.from === from.id && n.post === extra.post && n.challenge === extra.challenge));
+  inbox.push({ id: crypto.randomUUID(), kind, from: from.id, name: from.name || 'Membro', at: Date.now(), ...extra });
+  social.notifications[to] = inbox.slice(-50);
+}
+// A push reaches only devices that turned notifications on; the answer says whether there was one.
+function pushSocial(to, body) {
+  const has = db.subs.some(s => s.userId === to);
+  if (has) sendPush(to, { title: 'Retake Gym', body, url: '/#/social' }).catch(e => console.error('social push', e.message));
+  return has;
+}
+const cleanCard = c => {
+  const s = v => String(v ?? '').slice(0, 40);
+  if (c.type === 'weight') return { type: 'weight', from: s(c.from), to: s(c.to), change: s(c.change), before: s(c.before), after: s(c.after) };
+  if (c.type === 'workout') return { type: 'workout', name: s(c.name), sets: Math.max(0, Math.min(999, Number(c.sets) || 0)), minutes: Math.max(0, Math.min(999, Number(c.minutes) || 0)), volume: s(c.volume), exercises: (Array.isArray(c.exercises) ? c.exercises : []).slice(0, 8).map(s) };
+  return null;
+};
+// How `viewer` sees profile `id`: a private profile shows only its name, even to friends; a
+// friends-only one shows everything to friends, and only to someone who searched by exact
+// @user name (`found`) enough to send a request.
+function socialProfile(viewer, id, today, { found = false } = {}) {
+  const u = db.users.find(x => x.id === id);
+  if (!u || u.disabled) return null;
+  const p = social.profiles[id] || {}, vis = SOCIAL.visibilityOf(p), relation = SOCIAL.relationOf(social, viewer, id);
+  const base = { id, name: u.name, username: u.username || '', avatar: u.avatar || null, visibility: vis, relation };
+  const full = relation === 'self' || (relation === 'friend' && vis !== 'private') || vis === 'public';
+  if (!full) return relation === 'other' && !found ? null : base;
+  const S = readStateCached(id) || {};
+  const out = { ...base, bio: p.bio || '', goal: p.goal || '', streak: SOCIAL.streakDays(records(S.workouts).map(w => w.d), today), workouts: new Set(records(S.workouts).map(w => w.d)).size };
+  if (relation === 'self') Object.assign(out, { showInRankings: p.showInRankings !== false, mutedPokes: !!p.mutedPokes });
+  return out;
+}
+function postView(viewer, p, today) {
+  const reactions = Object.values(p.reactions || {}).reduce((o, r) => (o[r] = (o[r] || 0) + 1, o), {});
+  return { id: p.id, kind: p.kind, text: p.text, scope: p.scope, at: p.at, photo: !!p.photo, card: p.card || null,
+    author: socialProfile(viewer, p.author, today, { found: true }), mine: p.author === viewer,
+    reactions, myReaction: p.reactions?.[viewer] || null,
+    comments: (p.comments || []).slice(-20).map(c => ({ ...c, mine: c.author === viewer })), commentCount: (p.comments || []).length };
+}
 const isAdmin = user => !!user && (user.admin === true || ADMIN_UIDS.includes(user.id));
 // One owner per instance, any number of admins. Admins run the place day to day (users, invites,
 // the Coach); the owner is the one admin the others cannot act on: only the owner appoints or
@@ -1397,10 +1469,14 @@ function removeAccount(u) {
   dropWatchLinks(db, u.id);
   dropWatchCodes(watchCodes, u.id);
   presence.delete(u.id);
-  delete social.profiles[u.id]; delete social.friends[u.id]; delete social.notifications[u.id];
+  // Their side of the friends network: profile, friendships, posts (and photos), challenges.
+  delete social.profiles[u.id]; delete social.friends[u.id]; delete social.notifications[u.id]; delete social.seen[u.id];
   for (const id of Object.keys(social.friends)) social.friends[id] = social.friends[id].filter(x => x.id !== u.id);
-  social.posts = social.posts.filter(p => p.author !== u.id);
-  social.challenges = social.challenges.filter(c => c.owner !== u.id).map(c => ({ ...c, members: c.members.filter(id => id !== u.id) }));
+  for (const p of social.posts.filter(p => p.author === u.id)) dropPost(p);
+  for (const p of social.posts) if (Array.isArray(p.comments)) p.comments = p.comments.filter(c => c.author !== u.id);
+  for (const p of social.posts) if (p.reactions) delete p.reactions[u.id];
+  social.challenges = social.challenges.map(c => ({ ...c, members: c.members.filter(id => id !== u.id), owner: c.owner === u.id ? c.members.find(id => id !== u.id) : c.owner })).filter(c => c.members.length);
+  for (const c of social.challenges) delete c.checkins?.[u.id];
   for (const [code, invite] of Object.entries(social.invites)) if (invite.id === u.id) delete social.invites[code];
   saveSocial();
   // The training history and any Coach credential of theirs, both outside db.json.
@@ -1531,9 +1607,13 @@ async function passwordSignUp(req, res, asToken) {
   if (username && usernameTaken(username)) return usernameRefused();
   const created = new Date().toISOString();
   const user = { id: crypto.randomBytes(12).toString('base64url'), name, created, pw: { h, set: created }, ...(email ? { email } : {}), ...(username ? { username } : {}) };
+  // A friend's invite (POST /api/social/app-invite) is spent and befriends even where invites
+  // are not required.
+  if (!inv && code) inv = db.invites.find(i => i.code === code && i.friendOf && !i.usedBy && !i.revoked) || null;
   if (inv) { user.invitedBy = inv.code; inv.usedBy = user.id; inv.usedAt = created; }
   claimFirstAdmin(req, user);
   db.users.push(user);
+  friendFromInvite(user, inv);
   saveDb();
   audit(req, 'auth.register.ok', { user, msg: (inv ? inv.code + ' · password' : 'password') + (asToken ? ' · app' : '') });
   signedInAnswer(res, user, asToken);
@@ -2250,163 +2330,265 @@ function dataWritable() {
 }
 
 const routes = {
+  /* ---------- Retake Gym: friends network (social.js holds the rules) ---------- */
+  // Every social route takes the caller's local day as `today` (query or body): see social.js.
   'GET /api/social': async (req, res) => {
-    const me = readSession(req);
-    if (!me) return json(res, 401, { error: 'not signed in' });
-    const ids = new Set([me.id, ...(social.friends[me.id] || []).filter(x => x.status === 'accepted').map(x => x.id)]);
-    const profile = id => {
-      const u = db.users.find(x => x.id === id);
-      if (!u) return null;
-      const p = social.profiles[id] || {};
-      const relation = id === me.id ? 'self' : ids.has(id) ? 'friend' : 'other';
-      if (relation === 'other' && p.visibility !== 'public') return null;
-      if (relation === 'friend' && (!p.visibility || p.visibility === 'private')) return { id, name: u.name, username: u.username || '', visibility: 'private', relation };
-      const S = readStateCached(id) || {}, dates = [...new Set(records(S.workouts).map(w => w.d).filter(d => /^\d{4}-\d\d-\d\d$/.test(d)))].sort();
-      let streak = 0; const day = new Date().toISOString().slice(0,10);
-      for (let i = dates.length - 1; i >= 0; i--) { const gap = (new Date(day+'T12:00:00Z') - new Date(dates[i]+'T12:00:00Z')) / 86400000; if (gap > streak + 1) break; streak++; }
-      return { id, name: u.name, username: u.username || '', avatar: u.avatar || null, bio: p.bio || '', goal: p.goal || '', streak, visibility: p.visibility || 'private', showInRankings: !!p.showInRankings, mutedPokes: !!p.mutedPokes, relation };
-    };
-    const incoming = (social.friends[me.id] || []).filter(x => x.status === 'pending' && x.direction === 'in').map(x => profile(x.id)).filter(Boolean);
-    const outgoing = (social.friends[me.id] || []).filter(x => x.status === 'pending' && x.direction === 'out').map(x => profile(x.id)).filter(Boolean);
-    const people = [...ids].map(profile).filter(Boolean);
-    const posts = social.posts.filter(p => p.author === me.id || (social.profiles[p.author]?.visibility === 'friends' && ids.has(p.author)) || (social.profiles[p.author]?.visibility === 'public' && (p.scope === 'public' || ids.has(p.author))))
-      .sort((a,b) => b.at - a.at).slice(0,50).map(p => ({ ...p, author: profile(p.author) }));
-    const search = (new URL(req.url, 'http://x').searchParams.get('q') || '').trim().toLowerCase().slice(0,40);
-    const found = search.length >= 2 ? db.users.filter(u => u.id !== me.id && (u.name.toLowerCase().includes(search) || String(u.username || '').toLowerCase().includes(search)))
-      .map(u => profile(u.id)).filter(Boolean).slice(0,20) : [];
-    json(res, 200, { me: profile(me.id), people, incoming, outgoing, posts, found, notifications: (social.notifications?.[me.id] || []).slice(-30).reverse() });
+    const me = readSession(req); if (!me) return json(res, 401, { error: 'not signed in' });
+    const q = new URL(req.url, 'http://x').searchParams, today = SOCIAL.localToday(q.get('today'));
+    const friends = SOCIAL.friendIds(social, me.id);
+    const mine = social.friends[me.id] || [];
+    const incoming = mine.filter(x => x.status === 'pending' && x.direction === 'in').map(x => socialProfile(me.id, x.id, today)).filter(Boolean);
+    const outgoing = mine.filter(x => x.status === 'pending' && x.direction === 'out').map(x => socialProfile(me.id, x.id, today)).filter(Boolean);
+    const people = friends.map(id => socialProfile(me.id, id, today)).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
+    const posts = social.posts.filter(p => SOCIAL.canSeePost(social, me.id, p)).sort((a, b) => b.at - a.at).slice(0, 50).map(p => postView(me.id, p, today));
+    const search = (q.get('q') || '').trim().replace(/^@/, '').toLowerCase().slice(0, 40);
+    // Search finds friends, people with a request either way, and public profiles. A friends-only
+    // or private profile is found by its exact @user name only, so a friend can still be added.
+    const found = search.length >= 2 ? db.users.filter(u => u.id !== me.id && !u.disabled && (
+      String(u.username || '').toLowerCase() === search ||
+      ((u.name.toLowerCase().includes(search) || String(u.username || '').toLowerCase().includes(search)) &&
+        (SOCIAL.relationOf(social, me.id, u.id) !== 'other' || SOCIAL.visibilityOf(social.profiles[u.id]) === 'public'))))
+      .map(u => socialProfile(me.id, u.id, today, { found: true })).filter(Boolean).slice(0, 20) : [];
+    const seen = social.seen[me.id] || 0, inbox = (social.notifications[me.id] || []).slice(-30).reverse();
+    json(res, 200, { today, me: socialProfile(me.id, me.id, today), people, incoming, outgoing, posts, found,
+      notifications: inbox.map(n => ({ ...n, unread: n.at > seen })), unread: inbox.filter(n => n.at > seen).length });
+  },
+  // A small unread count for the Home button, without reading the whole feed.
+  'GET /api/social/unread': async (req, res) => {
+    const me = readSession(req); if (!me) return json(res, 401, { error: 'not signed in' });
+    const seen = social.seen[me.id] || 0;
+    const fresh = (social.notifications[me.id] || []).filter(n => n.at > seen);
+    json(res, 200, { unread: fresh.length, latest: fresh.slice(-5).reverse() });
+  },
+  'POST /api/social/seen': async (req, res) => {
+    const me = readSession(req); if (!me) return json(res, 401, { error: 'not signed in' });
+    social.seen[me.id] = Date.now(); saveSocial(); json(res, 200, { ok: true });
+  },
+  // One person's page: their profile and the posts of theirs the caller may see.
+  'GET /api/social/person': async (req, res) => {
+    const me = readSession(req); if (!me) return json(res, 401, { error: 'not signed in' });
+    const q = new URL(req.url, 'http://x').searchParams, today = SOCIAL.localToday(q.get('today'));
+    const uname = String(q.get('username') || '').replace(/^@/, '').toLowerCase();
+    const u = db.users.find(x => !x.disabled && (x.id === q.get('id') || (uname && String(x.username || '').toLowerCase() === uname)));
+    const profile = u && socialProfile(me.id, u.id, today, { found: true });
+    if (!profile) return json(res, 404, { error: 'profile not found' });
+    const posts = social.posts.filter(p => p.author === u.id && SOCIAL.canSeePost(social, me.id, p)).sort((a, b) => b.at - a.at).slice(0, 30).map(p => postView(me.id, p, today));
+    const friendCount = SOCIAL.friendIds(social, u.id).length;
+    json(res, 200, { profile: { ...profile, friendCount }, posts });
   },
   'PUT /api/social/profile': async (req, res) => {
     const me = readSession(req); if (!me) return json(res, 401, { error: 'not signed in' });
     const b = await readBody(req); const p = social.profiles[me.id] || {};
     p.bio = String(b.bio || '').slice(0, 240); p.goal = String(b.goal || '').slice(0, 100);
-    p.visibility = ['public','friends','private'].includes(b.visibility) ? b.visibility : 'private';
-    p.showInRankings = b.showInRankings === true; p.mutedPokes = b.mutedPokes === true;
+    p.visibility = SOCIAL.VISIBILITY.includes(b.visibility) ? b.visibility : 'friends';
+    p.showInRankings = b.showInRankings !== false; p.mutedPokes = b.mutedPokes === true;
     social.profiles[me.id] = p; saveSocial(); json(res, 200, { ok: true });
   },
   'POST /api/social/friend': async (req, res) => {
     const me = readSession(req); if (!me) return json(res, 401, { error: 'not signed in' });
-    const b = await readBody(req), uname = String(b.username || '').replace(/^@/, '').toLowerCase();
-    const target = db.users.find(u => u.id !== me.id && String(u.username || '').toLowerCase() === uname);
+    const b = await readBody(req), uname = String(b.username || '').trim().replace(/^@/, '').toLowerCase();
+    const target = db.users.find(u => u.id !== me.id && !u.disabled && (u.id === b.id || (uname && String(u.username || '').toLowerCase() === uname)));
     if (!target) return json(res, 404, { error: 'user not found' });
+    const rel = SOCIAL.relationOf(social, me.id, target.id);
+    if (rel === 'friend' || rel === 'sent') return json(res, 409, { error: 'request already exists' });
+    // They already asked: asking back is accepting.
+    if (rel === 'received') { befriend(me.id, target.id); notifySocial(target.id, 'friend-accepted', me); saveSocial(); return json(res, 200, { ok: true, friends: true }); }
     const a = social.friends[me.id] || [], z = social.friends[target.id] || [];
-    if (a.some(x => x.id === target.id)) return json(res, 409, { error: 'request already exists' });
-    a.push({ id: target.id, status: 'pending', direction: 'out', at: Date.now() }); z.push({ id: me.id, status: 'pending', direction: 'in', at: Date.now() });
-    social.friends[me.id] = a; social.friends[target.id] = z; saveSocial(); json(res, 200, { ok: true });
+    a.push({ id: target.id, status: 'pending', direction: 'out', at: Date.now() });
+    z.push({ id: me.id, status: 'pending', direction: 'in', at: Date.now() });
+    social.friends[me.id] = a; social.friends[target.id] = z;
+    notifySocial(target.id, 'friend-request', me); saveSocial();
+    pushSocial(target.id, `${me.name} quer ser seu amigo no Retake Gym.`);
+    json(res, 200, { ok: true });
   },
+  // A one-day code a friend already on this server types in to become your friend at once.
   'POST /api/social/invite': async (req, res) => {
     const me = readSession(req); if (!me) return json(res, 401, { error: 'not signed in' });
-    const code = crypto.randomBytes(5).toString('hex').toUpperCase(); social.invites[code] = { id: me.id, expires: Date.now() + 86400000 }; saveSocial(); json(res, 200, { code, expires: social.invites[code].expires });
+    for (const [c, inv] of Object.entries(social.invites)) if (inv.expires < Date.now()) delete social.invites[c];
+    const code = crypto.randomBytes(4).toString('hex').toUpperCase();
+    social.invites[code] = { id: me.id, expires: Date.now() + 86400000 }; saveSocial();
+    json(res, 200, { code, expires: social.invites[code].expires });
   },
   'POST /api/social/invite/redeem': async (req, res) => {
     const me = readSession(req); if (!me) return json(res, 401, { error: 'not signed in' });
     const b = await readBody(req), code = String(b.code || '').trim().toUpperCase(), inv = social.invites[code];
     if (!inv || inv.expires < Date.now() || inv.id === me.id || !db.users.some(u => u.id === inv.id)) return json(res, 404, { error: 'invite is invalid or expired' });
-    const add = (owner, id) => { const list = social.friends[owner] || []; if (!list.some(x => x.id === id)) list.push({ id, status: 'accepted', at: Date.now() }); social.friends[owner] = list; };
-    add(me.id, inv.id); add(inv.id, me.id); delete social.invites[code]; saveSocial(); json(res, 200, { ok: true });
+    befriend(me.id, inv.id); delete social.invites[code];
+    notifySocial(inv.id, 'friend-accepted', me); saveSocial(); json(res, 200, { ok: true });
+  },
+  // An invite to create a profile on this server (it is invite-only), made by any member. The
+  // new profile starts as the inviter's friend. Five unused at a time per member.
+  'POST /api/social/app-invite': async (req, res) => {
+    const me = readSession(req); if (!me) return json(res, 401, { error: 'not signed in' });
+    const open = db.invites.filter(i => i.friendOf === me.id && !i.usedBy && !i.revoked);
+    if (open.length >= 5) return json(res, 200, { invite: open.at(-1), reused: true });
+    let code;
+    do { code = crypto.randomBytes(8).toString('hex').toUpperCase(); } while (db.invites.some(i => i.code === code));
+    const invite = { code, note: `amigo de ${me.username ? '@' + me.username : me.name}`.slice(0, 60), createdBy: me.id, friendOf: me.id, created: new Date().toISOString() };
+    db.invites.push(invite); saveDb();
+    audit(req, 'social.invite.create', { user: me, msg: code });
+    json(res, 200, { invite });
   },
   'POST /api/social/friend/accept': async (req, res) => {
     const me = readSession(req); if (!me) return json(res, 401, { error: 'not signed in' });
-    const b = await readBody(req), id = String(b.id || ''), a = social.friends[me.id] || [], z = social.friends[id] || [];
-    const x = a.find(x => x.id === id && x.status === 'pending' && x.direction === 'in'), y = z.find(x => x.id === me.id && x.status === 'pending');
-    if (!x || !y) return json(res, 404, { error: 'request not found' });
-    x.status = y.status = 'accepted'; delete x.direction; delete y.direction; saveSocial(); json(res, 200, { ok: true });
+    const b = await readBody(req), id = String(b.id || '');
+    if (SOCIAL.relationOf(social, me.id, id) !== 'received') return json(res, 404, { error: 'request not found' });
+    befriend(me.id, id); notifySocial(id, 'friend-accepted', me); saveSocial();
+    pushSocial(id, `${me.name} aceitou seu pedido de amizade.`);
+    json(res, 200, { ok: true });
   },
   'POST /api/social/friend/remove': async (req, res) => {
     const me = readSession(req); if (!me) return json(res, 401, { error: 'not signed in' });
-    const b = await readBody(req), id = String(b.id || ''), a = social.friends[me.id] || [], z = social.friends[id] || [];
-    social.friends[me.id] = a.filter(x => x.id !== id); social.friends[id] = z.filter(x => x.id !== me.id); saveSocial(); json(res, 200, { ok: true });
+    const b = await readBody(req), id = String(b.id || '');
+    social.friends[me.id] = (social.friends[me.id] || []).filter(x => x.id !== id);
+    if (social.friends[id]) social.friends[id] = social.friends[id].filter(x => x.id !== me.id);
+    saveSocial(); json(res, 200, { ok: true });
   },
+  // One post, with at most one photo (kept in its own file, fetched with GET /api/social/photo).
   'POST /api/social/post': async (req, res) => {
     const me = readSession(req); if (!me) return json(res, 401, { error: 'not signed in' });
-    const b = await readBody(req), kind = ['workout','meal','weight','record'].includes(b.kind) ? b.kind : 'workout';
-    if (!['friends','public'].includes(social.profiles[me.id]?.visibility)) return json(res, 409, { error: 'make your social profile visible to friends before publishing' });
+    const b = await readBody(req), kind = ['workout', 'meal', 'weight', 'record', 'text'].includes(b.kind) ? b.kind : 'text';
+    if (SOCIAL.visibilityOf(social.profiles[me.id]) === 'private') return json(res, 409, { error: 'make your social profile visible to friends before publishing', code: 'private' });
     const textBody = String(b.text || '').trim().slice(0, 500);
-    if (!textBody) return json(res, 400, { error: 'post text required' });
-    const photo = typeof b.photo === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(b.photo) && b.photo.length <= 100000 ? b.photo : null;
-    if (b.photo && !photo) return json(res, 400, { error: 'photo too large or invalid' });
-    const p = { id: crypto.randomUUID(), author: me.id, kind, text: textBody, scope: b.scope === 'public' ? 'public' : 'friends', ...(photo ? { photo } : {}), at: Date.now(), reactions: {}, comments: [] };
-    social.posts.push(p); social.posts = social.posts.slice(-500); saveSocial(); json(res, 201, { ok: true, id: p.id });
+    if (b.photo && !SOCIAL.photoOk(b.photo)) return json(res, 400, { error: 'photo too large or invalid', code: 'photo' });
+    if (!textBody && !b.photo) return json(res, 400, { error: 'post text required' });
+    const recent = social.posts.filter(p => p.author === me.id && p.at > Date.now() - 3600000).length;
+    if (recent >= 20) return json(res, 429, { error: 'too many posts, try again later' });
+    const card = b.card && typeof b.card === 'object' ? cleanCard(b.card) : null;
+    const p = { id: crypto.randomUUID(), author: me.id, kind, text: textBody, scope: b.scope === 'public' ? 'public' : 'friends', ...(card ? { card } : {}), at: Date.now(), reactions: {}, comments: [] };
+    if (b.photo) { fs.mkdirSync(SOCIAL_PHOTOS, { recursive: true, mode: 0o700 }); durableWrite(socialPhotoFile(p.id), b.photo, 0o600); p.photo = true; }
+    social.posts.push(p);
+    while (social.posts.length > 2000) dropPost(social.posts[0]);
+    saveSocial(); json(res, 201, { ok: true, id: p.id });
+  },
+  'POST /api/social/post/delete': async (req, res) => {
+    const me = readSession(req); if (!me) return json(res, 401, { error: 'not signed in' });
+    const b = await readBody(req), p = social.posts.find(x => x.id === b.id);
+    if (!p || p.author !== me.id) return json(res, 404, { error: 'post not found' });
+    dropPost(p); saveSocial(); json(res, 200, { ok: true });
+  },
+  'GET /api/social/photo': async (req, res) => {
+    const me = readSession(req); if (!me) return json(res, 401, { error: 'not signed in' });
+    const id = new URL(req.url, 'http://x').searchParams.get('id') || '', p = social.posts.find(x => x.id === id);
+    if (!p?.photo || !SOCIAL.canSeePost(social, me.id, p)) return json(res, 404, { error: 'photo not found' });
+    let photo = null; try { photo = fs.readFileSync(socialPhotoFile(p.id), 'utf8'); } catch { /* gone */ }
+    if (!photo) return json(res, 404, { error: 'photo not found' });
+    json(res, 200, { id, photo }, { 'Cache-Control': 'private, max-age=86400' });
   },
   'POST /api/social/react': async (req, res) => {
     const me = readSession(req); if (!me) return json(res, 401, { error: 'not signed in' });
     const b = await readBody(req), p = social.posts.find(x => x.id === b.id);
-    if (!p) return json(res, 404, { error: 'post not found' });
-    if (p.author !== me.id && !((social.profiles[p.author]?.visibility === 'friends' || social.profiles[p.author]?.visibility === 'public') && (social.friends[me.id] || []).some(x => x.id === p.author && x.status === 'accepted')) && !(p.scope === 'public' && social.profiles[p.author]?.visibility === 'public')) return json(res, 403, { error: 'post is private' });
+    if (!p || !SOCIAL.canSeePost(social, me.id, p)) return json(res, 404, { error: 'post not found' });
+    if (!['💪', '🔥', '👏'].includes(b.reaction)) return json(res, 400, { error: 'invalid reaction' });
     if (!p.reactions || typeof p.reactions !== 'object') p.reactions = {};
-    if (!['💪','🔥','👏'].includes(b.reaction)) return json(res, 400, { error: 'invalid reaction' });
-    if (p.reactions[me.id] === b.reaction) delete p.reactions[me.id]; else p.reactions[me.id] = b.reaction;
+    const added = p.reactions[me.id] !== b.reaction;
+    if (added) p.reactions[me.id] = b.reaction; else delete p.reactions[me.id];
+    if (added && p.author !== me.id) notifySocial(p.author, 'reaction', me, { post: p.id, reaction: b.reaction }, true);
     saveSocial(); json(res, 200, { ok: true });
   },
   'POST /api/social/comment': async (req, res) => {
     const me = readSession(req); if (!me) return json(res, 401, { error: 'not signed in' });
     const b = await readBody(req), p = social.posts.find(x => x.id === b.id), value = String(b.text || '').trim().slice(0, 300);
-    if (!p) return json(res, 404, { error: 'post not found' }); if (!value) return json(res, 400, { error: 'comment required' });
-    if (p.author !== me.id && !((social.profiles[p.author]?.visibility === 'friends' || social.profiles[p.author]?.visibility === 'public') && (social.friends[me.id] || []).some(x => x.id === p.author && x.status === 'accepted')) && !(p.scope === 'public' && social.profiles[p.author]?.visibility === 'public')) return json(res, 403, { error: 'post is private' });
-    p.comments = Array.isArray(p.comments) ? p.comments : []; if (p.comments.length < 100) p.comments.push({ id: crypto.randomUUID(), author: me.id, name: me.name, text: value, at: Date.now() });
+    if (!p || !SOCIAL.canSeePost(social, me.id, p)) return json(res, 404, { error: 'post not found' });
+    if (!value) return json(res, 400, { error: 'comment required' });
+    p.comments = Array.isArray(p.comments) ? p.comments : [];
+    if (p.comments.length >= 100) return json(res, 409, { error: 'this post has too many comments' });
+    p.comments.push({ id: crypto.randomUUID(), author: me.id, name: me.name, text: value, at: Date.now() });
+    if (p.author !== me.id) { notifySocial(p.author, 'comment', me, { post: p.id, text: value.slice(0, 80) }); pushSocial(p.author, `${me.name} comentou: ${value.slice(0, 80)}`); }
     saveSocial(); json(res, 200, { ok: true });
   },
+  'POST /api/social/comment/delete': async (req, res) => {
+    const me = readSession(req); if (!me) return json(res, 401, { error: 'not signed in' });
+    const b = await readBody(req), p = social.posts.find(x => x.id === b.post);
+    const c = p?.comments?.find(x => x.id === b.id);
+    if (!c || (c.author !== me.id && p.author !== me.id)) return json(res, 404, { error: 'comment not found' });
+    p.comments = p.comments.filter(x => x !== c); saveSocial(); json(res, 200, { ok: true });
+  },
+  // This week (Monday to today, the caller's days) among the caller and the friends who opt in.
   'GET /api/social/ranking': async (req, res) => {
     const me = readSession(req); if (!me) return json(res, 401, { error: 'not signed in' });
-    const ids = [me.id, ...(social.friends[me.id] || []).filter(x => x.status === 'accepted').map(x => x.id)];
-    const sinceDate = new Date(); sinceDate.setUTCHours(0, 0, 0, 0); sinceDate.setUTCDate(sinceDate.getUTCDate() - ((sinceDate.getUTCDay() + 6) % 7));
-    const since = sinceDate.getTime();
-    const rows = ids.map(id => {
-      const u = db.users.find(x => x.id === id), p = social.profiles[id] || {};
-      const S = readStateCached(id) || {}, workouts = records(S.workouts).filter(w => new Date((w.d || '') + 'T12:00:00').getTime() >= since);
-      const days = [...new Set(workouts.map(w => w.d))].sort(); let streak = 0;
-      for (let i = days.length - 1; i >= 0; i--) { if (i === days.length - 1 || (new Date(days[i + 1] + 'T12:00:00') - new Date(days[i] + 'T12:00:00')) / 86400000 <= 1) streak++; else break; }
+    const q = new URL(req.url, 'http://x').searchParams, today = SOCIAL.localToday(q.get('today')), since = SOCIAL.weekStart(today);
+    const rows = [me.id, ...SOCIAL.friendIds(social, me.id)].filter(id => id === me.id || social.profiles[id]?.showInRankings !== false).map(id => {
+      const u = db.users.find(x => x.id === id);
+      if (!u || u.disabled) return null;
+      const S = readStateCached(id) || {}, all = records(S.workouts);
+      const workouts = all.filter(w => SOCIAL.isDay(w.d) && w.d >= since && w.d <= today);
       const unitFactor = S.unit === 'lb' ? 0.45359237 : 1;
-      const volume = workouts.reduce((sum,w) => sum + records(w.entries).reduce((a,e) => a + records(e.sets).filter(s => s.done).reduce((n,s) => n + (Number(s.w)||0)*(Number(s.r)||0)*unitFactor,0),0),0);
-      const weighIns = records(S.bodyweight).filter(x => Number.isFinite(Number(x.w))).sort((a,b) => String(a.d).localeCompare(String(b.d)));
+      const volume = workouts.reduce((sum, w) => sum + records(w.entries).reduce((a, e) => a + records(e.sets).filter(s => s.done).reduce((n, s) => n + (Number(s.w) || 0) * (Number(s.r) || 0) * unitFactor, 0), 0), 0);
+      const weighIns = records(S.bodyweight).filter(x => Number.isFinite(Number(x.w))).sort((a, b) => String(a.d).localeCompare(String(b.d)));
       const from = Number(weighIns[0]?.w), current = Number(weighIns.at(-1)?.w), target = Number(S.targetW);
-      const goalProgress = from !== target && Number.isFinite(from) && Number.isFinite(current) && Number.isFinite(target) ? Math.max(0, Math.min(100, Math.round((current-from)/(target-from)*100))) : 0;
-      return { id, name: u?.name || 'Member', username: u?.username || '', workouts: workouts.length, volume: Math.round(volume), streak, goalProgress };
-    }).filter(x => x.id === me.id || social.profiles[x.id]?.showInRankings === true);
-    const category = new URL(req.url, 'http://x').searchParams.get('by') || 'workouts';
-    json(res, 200, { category, rows });
+      const goalProgress = from !== target && [from, current, target].every(Number.isFinite) ? Math.max(0, Math.min(100, Math.round((current - from) / (target - from) * 100))) : 0;
+      return { id, name: u.name, username: u.username || '', avatar: u.avatar || null, workouts: new Set(workouts.map(w => w.d)).size,
+        volumeKg: Math.round(volume), streak: SOCIAL.streakDays(all.map(w => w.d), today), goalProgress };
+    }).filter(Boolean);
+    json(res, 200, { since, today, rows });
   },
   'GET /api/social/challenges': async (req, res) => {
     const me = readSession(req); if (!me) return json(res, 401, { error: 'not signed in' });
-    const friends = new Set((social.friends[me.id] || []).filter(x => x.status === 'accepted').map(x => x.id));
-    json(res, 200, { challenges: social.challenges.filter(c => c.members.includes(me.id) || friends.has(c.owner) || c.scope === 'public').slice(-30).map(c => ({ ...c, progress: Object.fromEntries(c.members.map(id => { const n = (c.checkins[id] || []).length; return [id, { days: n, badge: n >= c.days ? 'Finisher' : n >= 7 ? 'Consistent' : null }] })) })) });
+    const today = SOCIAL.localToday(new URL(req.url, 'http://x').searchParams.get('today'));
+    const friends = new Set(SOCIAL.friendIds(social, me.id));
+    const nameOf = id => db.users.find(u => u.id === id)?.name || 'Membro';
+    const list = social.challenges.filter(c => c.members.includes(me.id) || friends.has(c.owner))
+      .map(c => ({ ...SOCIAL.challengeView(c, today, nameOf), joined: c.members.includes(me.id), ownerName: nameOf(c.owner) }))
+      // Ended and not joined are of no use; ended ones stay a week so everyone sees who won.
+      .filter(c => c.joined || !c.ended).filter(c => !c.ended || SOCIAL.dayDiff(c.end, today) <= 7)
+      .sort((a, b) => Number(a.ended) - Number(b.ended) || b.start.localeCompare(a.start));
+    json(res, 200, { today, challenges: list.slice(0, 30) });
   },
   'POST /api/social/challenges': async (req, res) => {
     const me = readSession(req); if (!me) return json(res, 401, { error: 'not signed in' });
-    const b = await readBody(req), title = String(b.title || '').trim().slice(0, 80);
+    const b = await readBody(req), title = String(b.title || '').trim().slice(0, 80), today = SOCIAL.localToday(b.today);
     if (!title) return json(res, 400, { error: 'challenge name required' });
-    const days = b.days === 7 ? 7 : 30, challenge = { id: crypto.randomUUID(), owner: me.id, title, days, start: new Date().toISOString().slice(0,10), scope: 'friends', members: [me.id], checkins: {}, at: Date.now() };
-    social.challenges.push(challenge); social.challenges = social.challenges.slice(-100); saveSocial(); json(res, 201, { challenge });
+    const days = [7, 14, 21, 30].includes(Number(b.days)) ? Number(b.days) : 30;
+    const challenge = { id: crypto.randomUUID(), owner: me.id, title, days, start: today, scope: 'friends', members: [me.id], checkins: {}, at: Date.now() };
+    social.challenges.push(challenge); social.challenges = social.challenges.slice(-300);
+    for (const id of SOCIAL.friendIds(social, me.id)) notifySocial(id, 'challenge', me, { challenge: challenge.id, title }, true);
+    saveSocial(); json(res, 201, { challenge: SOCIAL.challengeView(challenge, today) });
   },
   'POST /api/social/challenges/join': async (req, res) => {
     const me = readSession(req); if (!me) return json(res, 401, { error: 'not signed in' });
-    const b = await readBody(req), c = social.challenges.find(x => x.id === b.id);
+    const b = await readBody(req), c = social.challenges.find(x => x.id === b.id), today = SOCIAL.localToday(b.today);
     if (!c) return json(res, 404, { error: 'challenge not found' });
-    if (c.scope !== 'public' && c.owner !== me.id && !(social.friends[me.id] || []).some(x => x.id === c.owner && x.status === 'accepted')) return json(res, 403, { error: 'friends only' });
-    if (!c.members.includes(me.id)) c.members.push(me.id); saveSocial(); json(res, 200, { ok: true });
+    if (c.owner !== me.id && !SOCIAL.areFriends(social, me.id, c.owner)) return json(res, 403, { error: 'friends only' });
+    if (SOCIAL.challengeView(c, today).ended) return json(res, 409, { error: 'challenge has ended' });
+    if (!c.members.includes(me.id)) c.members.push(me.id);
+    saveSocial(); json(res, 200, { ok: true });
   },
+  'POST /api/social/challenges/leave': async (req, res) => {
+    const me = readSession(req); if (!me) return json(res, 401, { error: 'not signed in' });
+    const b = await readBody(req), i = social.challenges.findIndex(x => x.id === b.id);
+    if (i < 0 || !social.challenges[i].members.includes(me.id)) return json(res, 404, { error: 'challenge not found' });
+    const c = social.challenges[i];
+    c.members = c.members.filter(id => id !== me.id); delete c.checkins[me.id];
+    if (!c.members.length) social.challenges.splice(i, 1);
+    else if (c.owner === me.id) c.owner = c.members[0];
+    saveSocial(); json(res, 200, { ok: true });
+  },
+  // A check-in counts a day the member trained: a workout logged on that day (their own day).
   'POST /api/social/challenges/checkin': async (req, res) => {
     const me = readSession(req); if (!me) return json(res, 401, { error: 'not signed in' });
-    const b = await readBody(req), c = social.challenges.find(x => x.id === b.id);
+    const b = await readBody(req), c = social.challenges.find(x => x.id === b.id), today = SOCIAL.localToday(b.today);
     if (!c || !c.members.includes(me.id)) return json(res, 404, { error: 'challenge not found' });
-    c.checkins[me.id] = c.checkins[me.id] || []; const today = new Date().toISOString().slice(0,10);
-    const elapsed = Math.floor((Date.now() - new Date(c.start + 'T00:00:00Z').getTime()) / 86400000);
-    if (elapsed < 0 || elapsed >= c.days) return json(res, 409, { error: 'challenge has ended' });
+    const view = SOCIAL.challengeView(c, today);
+    if (!view.started) return json(res, 409, { error: 'challenge has not started' });
+    if (view.ended) return json(res, 409, { error: 'challenge has ended', code: 'ended' });
     const state = readStateCached(me.id) || {};
-    if (!records(state.workouts).some(w => w.d === today)) return json(res, 409, { error: 'complete a workout to check in' });
-    if (!c.checkins[me.id].includes(today)) c.checkins[me.id].push(today); saveSocial(); json(res, 200, { ok: true });
+    if (!records(state.workouts).some(w => w.d === today)) return json(res, 409, { error: 'complete a workout to check in', code: 'no-workout' });
+    c.checkins[me.id] = c.checkins[me.id] || [];
+    if (!c.checkins[me.id].includes(today)) c.checkins[me.id].push(today);
+    saveSocial(); json(res, 200, { ok: true });
   },
   'POST /api/social/poke': async (req, res) => {
     const me = readSession(req); if (!me) return json(res, 401, { error: 'not signed in' });
-    const b = await readBody(req), id = String(b.id || ''), friend = (social.friends[me.id] || []).find(x => x.id === id && x.status === 'accepted');
-    if (!friend) return json(res, 403, { error: 'friends only' });
-    if (social.profiles[id]?.mutedPokes) return json(res, 403, { error: 'this friend has muted pokes' });
-    const today = new Date().toISOString().slice(0,10), key = me.id + ':' + id;
-    if (social.pokes[key] === today) return json(res, 429, { error: 'already nudged this friend today' });
-    social.pokes[key] = today; saveSocial(); const from = db.users.find(x => x.id === me.id);
-    const inbox = social.notifications[id] || []; inbox.push({ id: crypto.randomUUID(), kind: 'poke', from: me.id, name: from?.name || 'A friend', at: Date.now() }); social.notifications[id] = inbox.slice(-30); saveSocial();
-    await sendPush(id, { title: 'Retake Gym', body: `${from?.name || 'A friend'} te cutucou: bora treinar!`, url: '/#/social' });
-    json(res, 200, { ok: true });
+    const b = await readBody(req), id = String(b.id || ''), today = SOCIAL.localToday(b.today);
+    if (!SOCIAL.areFriends(social, me.id, id)) return json(res, 403, { error: 'friends only' });
+    if (social.profiles[id]?.mutedPokes) return json(res, 403, { error: 'this friend has muted pokes', code: 'muted' });
+    const key = me.id + ':' + id;
+    if (social.pokes[key] === today) return json(res, 429, { error: 'already nudged this friend today', code: 'today' });
+    social.pokes[key] = today; notifySocial(id, 'poke', me); saveSocial();
+    // The poke is always in their feed; a push only reaches a device that turned notifications on.
+    const pushed = await pushSocial(id, `${me.name} te cutucou: bora treinar!`);
+    json(res, 200, { ok: true, pushed });
   },
   // 503 rather than a flag in a 200: the container healthcheck is `wget --spider`, which reads
   // the status and nothing else, and an instance that cannot write its data directory is exactly
@@ -2532,9 +2714,11 @@ const routes = {
       }
     }
     const user = { id: c.uid, name: c.name, created: new Date().toISOString() };
+    if (!invite && c.code) invite = db.invites.find(i => i.code === c.code && i.friendOf && !i.usedBy && !i.revoked) || null;
     if (invite) { user.invitedBy = invite.code; invite.usedBy = user.id; invite.usedAt = user.created; }
     claimFirstAdmin(req, user);
     db.users.push(user);
+    friendFromInvite(user, invite);
     db.creds.push({
       id: credential.id, userId: user.id,
       publicKey: Buffer.from(credential.publicKey).toString('base64url'),

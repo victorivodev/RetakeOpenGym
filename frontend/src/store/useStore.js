@@ -554,6 +554,8 @@ export const useStore = create((set, get) => {
   }
 
   initReminderSync(() => get().S)
+  // Retake Gym: friends' pokes and comments as phone notifications while the app is open.
+  if (MOBILE) import('../lib/social-notify.js').then(m => m.initSocialNotes(() => !!get().user)).catch(() => {})
   // A phone with its own Coach key runs its automatic reviews itself, while the app is open.
   initCoachSchedule(() => get())
   // What it reads back from the health hub (heart rate, weigh-ins) goes in as any change does.

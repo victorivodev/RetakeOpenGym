@@ -308,6 +308,70 @@ paths:
       responses:
         '200': { description: Poke sent }
         '429': { description: Daily limit reached }
+  /api/social/unread:
+    get:
+      tags: [social]
+      operationId: getSocialUnread
+      summary: Count unread social notifications, with the latest few
+      responses:
+        '200': { description: Unread count }
+        '401': { description: Sign in required }
+  /api/social/seen:
+    post:
+      tags: [social]
+      operationId: markSocialSeen
+      summary: Mark social notifications as read
+      responses:
+        '200': { description: Marked }
+        '401': { description: Sign in required }
+  /api/social/person:
+    get:
+      tags: [social]
+      operationId: getSocialPerson
+      summary: Read one person's profile and the posts of theirs the caller may see
+      responses:
+        '200': { description: Profile and posts }
+        '401': { description: Sign in required }
+  /api/social/app-invite:
+    post:
+      tags: [social]
+      operationId: createSocialAppInvite
+      summary: Create an invite to sign up on this server that starts as your friend
+      responses:
+        '200': { description: Invite }
+        '401': { description: Sign in required }
+  /api/social/post/delete:
+    post:
+      tags: [social]
+      operationId: deleteSocialPost
+      summary: Delete one of your posts and its photo
+      responses:
+        '200': { description: Deleted }
+        '401': { description: Sign in required }
+  /api/social/photo:
+    get:
+      tags: [social]
+      operationId: getSocialPhoto
+      summary: Read a post's photo as a data URL
+      responses:
+        '200': { description: Photo }
+        '401': { description: Sign in required }
+  /api/social/comment/delete:
+    post:
+      tags: [social]
+      operationId: deleteSocialComment
+      summary: Delete your comment, or one on your post
+      responses:
+        '200': { description: Deleted }
+        '401': { description: Sign in required }
+  /api/social/challenges/leave:
+    post:
+      tags: [social]
+      operationId: leaveSocialChallenge
+      summary: Leave a group challenge
+      responses:
+        '200': { description: Left }
+        '401': { description: Sign in required }
   /api/health:
     get:
       tags: [meta]

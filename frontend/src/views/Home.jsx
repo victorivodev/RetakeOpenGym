@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { socialApi } from '../lib/api.js'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { effectiveRoutines, effectiveRoutineIds, nextTrainingDay, lastBW, setsDoneActive } from '../lib/history.js'
@@ -39,6 +40,9 @@ export default function Home() {
   // The banner switched off and the sync stuck: a dot on the gear (Settings → Show connection status).
   const trouble = useConnectionTrouble()
   const [weekOffset, setWeekOffset] = useState(0)
+  // New notes from friends (pokes, comments, requests): a dot on the Friends button.
+  const [socialUnread, setSocialUnread] = useState(0)
+  useEffect(() => { if (user) socialApi.unread().then(x => setSocialUnread(x.unread || 0)).catch(() => {}) }, [user?.id])
 
   const today = new Date()
   // A weekday can hold several routines. `todayRoutines` is the whole day; `routine` is the
@@ -127,7 +131,7 @@ export default function Home() {
     <div className="hdr">
       <SeasonDeco spot="header-bats" />
       <div><h1>{user ? t('Hi {0}', user.name) : 'Retake Gym'}</h1><div className="sub">{today.toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'long' })}</div></div>
-      {user && <button className="iconbtn" onClick={() => nav('/social')} aria-label="Social"><Icon name="heart" /></button>}
+      {user && <button className="iconbtn" onClick={() => nav('/social')} aria-label={socialUnread ? t('Friends') + ', ' + t('{0} new', socialUnread) : t('Friends')}><Icon name="person" />{socialUnread > 0 && <span className="tab-dot" aria-hidden="true" />}</button>}
       <button className="iconbtn" data-tour="settings-gear" onClick={() => nav('/settings')} aria-label={trouble ? t('Settings') + ', ' + t('Connection problem') : t('Settings')}><Icon name="gear" />{trouble && <span className="tab-dot" aria-hidden="true" />}</button>
     </div>
 
