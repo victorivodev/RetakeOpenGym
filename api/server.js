@@ -194,8 +194,28 @@ function befriend(a, b) {
     social.friends[owner] = list;
   }
 }
-// A profile made with a friend's invite starts as that friend's friend.
+// Retake Gym is invite-only and for one circle of friends, so by default everyone on the server
+// is everyone's friend: at start for the profiles already there, and for each new one as it is
+// made. SOCIAL_EVERYONE_FRIENDS=0 turns it off (friends by request and invite only).
+const EVERYONE_FRIENDS = !/^(0|false|no|off)$/i.test(process.env.SOCIAL_EVERYONE_FRIENDS || '');
+function befriendEveryone(user) {
+  if (!EVERYONE_FRIENDS) return false;
+  let changed = false;
+  for (const u of db.users) {
+    if (u.disabled || u.id === user.id || SOCIAL.areFriends(social, user.id, u.id)) continue;
+    befriend(user.id, u.id); changed = true;
+  }
+  return changed;
+}
+if (EVERYONE_FRIENDS) {
+  let changed = false;
+  for (const u of db.users) if (!u.disabled && befriendEveryone(u)) changed = true;
+  if (changed) saveSocial();
+}
+// A profile made with a friend's invite starts as that friend's friend (and, by default, as
+// everyone's: befriendEveryone).
 function friendFromInvite(user, inv) {
+  if (befriendEveryone(user)) saveSocial();
   if (!inv?.friendOf || !db.users.some(u => u.id === inv.friendOf)) return;
   befriend(user.id, inv.friendOf);
   notifySocial(inv.friendOf, 'friend-joined', user);
@@ -2350,7 +2370,7 @@ const routes = {
         (SOCIAL.relationOf(social, me.id, u.id) !== 'other' || SOCIAL.visibilityOf(social.profiles[u.id]) === 'public'))))
       .map(u => socialProfile(me.id, u.id, today, { found: true })).filter(Boolean).slice(0, 20) : [];
     const seen = social.seen[me.id] || 0, inbox = (social.notifications[me.id] || []).slice(-30).reverse();
-    json(res, 200, { today, me: socialProfile(me.id, me.id, today), people, incoming, outgoing, posts, found,
+    json(res, 200, { today, everyone: EVERYONE_FRIENDS, me: socialProfile(me.id, me.id, today), people, incoming, outgoing, posts, found,
       notifications: inbox.map(n => ({ ...n, unread: n.at > seen })), unread: inbox.filter(n => n.at > seen).length });
   },
   // A small unread count for the Home button, without reading the whole feed.
@@ -2374,7 +2394,7 @@ const routes = {
     if (!profile) return json(res, 404, { error: 'profile not found' });
     const posts = social.posts.filter(p => p.author === u.id && SOCIAL.canSeePost(social, me.id, p)).sort((a, b) => b.at - a.at).slice(0, 30).map(p => postView(me.id, p, today));
     const friendCount = SOCIAL.friendIds(social, u.id).length;
-    json(res, 200, { profile: { ...profile, friendCount }, posts });
+    json(res, 200, { everyone: EVERYONE_FRIENDS, profile: { ...profile, friendCount }, posts });
   },
   'PUT /api/social/profile': async (req, res) => {
     const me = readSession(req); if (!me) return json(res, 401, { error: 'not signed in' });
@@ -2440,6 +2460,7 @@ const routes = {
   'POST /api/social/friend/remove': async (req, res) => {
     const me = readSession(req); if (!me) return json(res, 401, { error: 'not signed in' });
     const b = await readBody(req), id = String(b.id || '');
+    if (EVERYONE_FRIENDS && SOCIAL.areFriends(social, me.id, id)) return json(res, 409, { error: 'everyone here is friends', code: 'everyone' });
     social.friends[me.id] = (social.friends[me.id] || []).filter(x => x.id !== id);
     if (social.friends[id]) social.friends[id] = social.friends[id].filter(x => x.id !== me.id);
     saveSocial(); json(res, 200, { ok: true });

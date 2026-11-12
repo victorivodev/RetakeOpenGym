@@ -142,7 +142,7 @@ function Friends({ data, reload }) {
   return <>
     <div className="card social-invite">
       <b>{t('Invite a friend to the app')}</b>
-      <div className="muted small" style={{ margin: '4px 0 12px' }}>{t('Send a link with an invite code. When your friend creates an account with it, you two are already friends.')}</div>
+      <div className="muted small" style={{ margin: '4px 0 12px' }}>{data.everyone ? t('Send a link with an invite code. Everyone on the app is friends with everyone, so your friend sees the whole group from the start.') : t('Send a link with an invite code. When your friend creates an account with it, you two are already friends.')}</div>
       <Button variant="primary" icon="share" disabled={busy} onClick={invite}>{t('Send invite')}</Button>
     </div>
     {data.incoming.length > 0 && <Section title={t('Friend requests')}>
@@ -160,13 +160,13 @@ function Friends({ data, reload }) {
       {found?.map(p => personRow(p, relationButton(p)))}
     </Section>
     <Section title={t('My friends') + (data.people.length ? ' · ' + data.people.length : '')}>
-      {!data.people.length && <div className="small muted">{t('No friends yet. Send an invite or search by @user name.')}</div>}
+      {!data.people.length && <div className="small muted">{data.everyone ? t('Nobody else here yet. Send an invite.') : t('No friends yet. Send an invite or search by @user name.')}</div>}
       {data.people.map(p => personRow(p, <Button size="sm" disabled={busy} onClick={() => run(() => socialApi.poke(p.id), t('Poke sent'))}>👉 {t('Poke')}</Button>))}
     </Section>
     {data.outgoing.length > 0 && <Section title={t('Requests you sent')}>
       {data.outgoing.map(p => personRow(p, <Button size="sm" disabled={busy} onClick={() => run(() => socialApi.removeFriend(p.id))}>{t('Cancel')}</Button>))}
     </Section>}
-    <Section title={t('Friend code')} footer={t('For a friend who already has an account: one of you makes a code, the other types it in. It lasts one day.')}>
+    {!data.everyone && <Section title={t('Friend code')} footer={t('For a friend who already has an account: one of you makes a code, the other types it in. It lasts one day.')}>
       <div className="social-row">
         <Button size="sm" disabled={busy} onClick={() => run(async () => { const x = await socialApi.makeInvite(); setMyCode(x.code); copyText(x.code).catch(() => {}) })}>{t('Make a code')}</Button>
         {myCode && <code className="social-code">{myCode}</code>}
@@ -175,7 +175,7 @@ function Friends({ data, reload }) {
         <input className="input" value={code} onChange={e => setCode(e.target.value.toUpperCase())} placeholder={t('Friend code')} />
         <Button size="sm" disabled={busy || !code.trim()}>{t('Use code')}</Button>
       </form>
-    </Section>
+    </Section>}
     <ProfileSettings me={data.me} reload={reload} />
   </>
 }

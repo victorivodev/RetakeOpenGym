@@ -2695,6 +2695,8 @@ export const PT_BR_OVERRIDES = {
   "{0} reacted {1} to your post.": "{0} reagiu {1} à sua publicação.",
   "{0} started the challenge \"{1}\".": "{0} criou o desafio \"{1}\".",
   "{0} wants to be your friend.": "{0} quer ser seu amigo.",
+  "Send a link with an invite code. Everyone on the app is friends with everyone, so your friend sees the whole group from the start.": "Mande um link com um código de convite. No app todo mundo é amigo de todo mundo, então seu amigo já vê a turma toda desde o começo.",
+  "Nobody else here yet. Send an invite.": "Ainda não tem mais ninguém aqui. Mande um convite.",
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES }

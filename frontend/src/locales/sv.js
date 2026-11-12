@@ -3952,4 +3952,6 @@ export default {
   "{0} reacted {1} to your post.": "{0} reacted {1} to your post.",
   "{0} started the challenge \"{1}\".": "{0} started the challenge \"{1}\".",
   "{0} wants to be your friend.": "{0} wants to be your friend.",
+  "Send a link with an invite code. Everyone on the app is friends with everyone, so your friend sees the whole group from the start.": "Send a link with an invite code. Everyone on the app is friends with everyone, so your friend sees the whole group from the start.",
+  "Nobody else here yet. Send an invite.": "Nobody else here yet. Send an invite.",
 }

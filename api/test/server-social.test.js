@@ -16,7 +16,7 @@ async function start(t, { invites = [], env = {} } = {}) {
   const secret = crypto.randomBytes(32).toString('hex')
   fs.writeFileSync(path.join(dir, 'secret'), secret)
   fs.writeFileSync(path.join(dir, 'db.json'), JSON.stringify({ users: [{ id: 'a', name: 'Alice', username: 'alice' }, { id: 'b', name: 'Bob', username: 'bob' }, { id: 'c', name: 'Carol', username: 'carol' }], creds: [], subs: [], invites }))
-  const child = spawn(process.execPath, ['server.js'], { cwd: API, env: { ...process.env, PORT: '0', DATA_DIR: dir, ORIGIN: 'http://localhost:8080', RP_ID: 'localhost', ...env }, stdio: ['ignore', 'pipe', 'pipe'] })
+  const child = spawn(process.execPath, ['server.js'], { cwd: API, env: { ...process.env, PORT: '0', DATA_DIR: dir, ORIGIN: 'http://localhost:8080', RP_ID: 'localhost', SOCIAL_EVERYONE_FRIENDS: '0', ...env }, stdio: ['ignore', 'pipe', 'pipe'] })
   let log = ''; child.stdout.on('data', x => log += x); child.stderr.on('data', x => log += x)
   t.after(() => { child.kill('SIGKILL'); fs.rmSync(dir, { recursive: true, force: true }) })
   const port = await boundPort(child, () => log)
@@ -106,4 +106,16 @@ test('social: a friend invite signs a new profile up as a friend', async t => {
   const home = (await call('a', '/api/social', null, 'GET')).body
   assert.equal(home.people[0].username, 'dani')
   assert.equal(home.notifications[0].kind, 'friend-joined')
+})
+
+test('social: by default everyone on the server is everyone\'s friend', async t => {
+  const { call } = await start(t, { env: { SOCIAL_EVERYONE_FRIENDS: '', EMAIL_LOGIN: '1' } })
+  const home = (await call('a', '/api/social', null, 'GET')).body
+  assert.equal(home.everyone, true)
+  assert.deepEqual(home.people.map(p => p.username).sort(), ['bob', 'carol'])
+  assert.equal((await call('a', '/api/social/friend/remove', { id: 'b' })).status, 409)
+  const r = await call(null, '/api/register/password', { name: 'Dani', username: 'dani', email: 'dani@example.com', password: 'a long enough password 123' })
+  assert.equal(r.status, 200, JSON.stringify(r.body))
+  assert.ok((await call('c', '/api/social', null, 'GET')).body.people.some(p => p.username === 'dani'))
+  assert.equal((await call('b', '/api/social/poke', { id: 'c' })).status, 200)
 })

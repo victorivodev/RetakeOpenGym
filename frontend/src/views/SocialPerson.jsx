@@ -55,7 +55,7 @@ export default function SocialPerson() {
         {p.relation === 'received' && <Button variant="primary" disabled={busy} onClick={() => run(() => socialApi.accept(p.id), t('Now you are friends'))}>{t('Accept request')}</Button>}
         {p.relation === 'friend' && <>
           <Button variant="tinted" disabled={busy} onClick={() => run(() => socialApi.poke(p.id), t('Poke sent'))}>👉 {t('Poke')}</Button>
-          <Button disabled={busy} onClick={removeFriend}>{t('Remove friend')}</Button>
+          {!data.everyone && <Button disabled={busy} onClick={removeFriend}>{t('Remove friend')}</Button>}
         </>}
       </div>
     </div>}
