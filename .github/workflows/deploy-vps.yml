@@ -72,8 +72,9 @@ jobs:
             "APP_DIR=$APP_DIR bash -s" <<'REMOTE'
           set -euo pipefail
           cd "${APP_DIR/#\~/$HOME}"
-          # A pasta pode ser do usuário ou do root (quem clonou com sudo): o git roda como o dono.
-          if [ -O .git ]; then G=(git); else G=(sudo -n git); fi
+          # O git roda como root, como o install.sh (que faz o próprio git pull com sudo): a pasta
+          # costuma ter arquivos do usuário e do root misturados, e só o root mexe em todos.
+          G=(sudo -n git -c safe.directory="$PWD")
           echo "==> Pegando a main nova"
           "${G[@]}" fetch --prune origin main
           if [ "$("${G[@]}" rev-parse --abbrev-ref HEAD)" != main ]; then
