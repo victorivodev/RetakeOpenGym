@@ -1,0 +1,92 @@
+# Retake Gym: a cada push na main (um PR mergeado), atualiza o servidor na VPS pelo SSH.
+#
+# Faz no servidor o mesmo que a atualização à mão (docs/DEPLOY_PT.md, "Deploy automático"):
+# deixa a pasta do app na main mais nova e roda `sudo bash deploy/install.sh`, que reconstrói e
+# sobe os containers sem mexer em data/ nem no .env. Também dá para rodar pela aba Actions
+# ("Run workflow").
+#
+# Secrets do repositório (Settings > Secrets and variables > Actions):
+#   VPS_SSH_KEY          a chave privada SSH só deste deploy (o arquivo inteiro, com BEGIN/END)
+#   VPS_HOST             o IP ou nome da VPS (ex.: 147.15.73.43)
+#   VPS_USER             o usuário do SSH (ex.: ubuntu); precisa de sudo sem senha
+#   VPS_SSH_KNOWN_HOSTS  opcional: a linha de known_hosts da VPS. Sem ele, a chave do servidor é
+#                        lida na hora (ssh-keyscan), o que confia no primeiro servidor que responder.
+# Opcionais, em Variables (não são segredo): VPS_PORT (padrão 22), VPS_APP_DIR (padrão
+# ~/retakegym), APP_URL (padrão https://gym.retaketecnologia.com.br, usado no teste final).
+name: Deploy VPS
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['docs/**', 'website/**', '**.md']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Um deploy por vez; um merge novo espera o anterior terminar em vez de cortar o build no meio.
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      HOST: ${{ secrets.VPS_HOST }}
+      SSH_USER: ${{ secrets.VPS_USER }}
+      PORT: ${{ vars.VPS_PORT || '22' }}
+      APP_DIR: ${{ vars.VPS_APP_DIR || '~/retakegym' }}
+      APP_URL: ${{ vars.APP_URL || 'https://gym.retaketecnologia.com.br' }}
+    steps:
+      - name: Chave SSH
+        env:
+          KEY: ${{ secrets.VPS_SSH_KEY }}
+          KNOWN: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
+        run: |
+          [ -n "$KEY" ] && [ -n "$HOST" ] && [ -n "$SSH_USER" ] || {
+            echo "::error::Faltam os secrets VPS_SSH_KEY, VPS_HOST e VPS_USER (veja docs/DEPLOY_PT.md, Deploy automático)."; exit 1; }
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          if [ -n "$KNOWN" ]; then
+            printf '%s\n' "$KNOWN" > ~/.ssh/known_hosts
+          else
+            echo "::warning::Sem o secret VPS_SSH_KNOWN_HOSTS: usando a chave que o servidor apresentar agora."
+            ssh-keyscan -T 20 -p "$PORT" "$HOST" > ~/.ssh/known_hosts 2>/dev/null
+            [ -s ~/.ssh/known_hosts ] || { echo "::error::A VPS não respondeu no SSH ($HOST:$PORT)."; exit 1; }
+          fi
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Atualizar o servidor
+        run: |
+          ssh -i ~/.ssh/deploy -p "$PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            -o ServerAliveInterval=30 -o ServerAliveCountMax=20 "$SSH_USER@$HOST" \
+            "APP_DIR=$APP_DIR bash -s" <<'REMOTE'
+          set -euo pipefail
+          cd "${APP_DIR/#\~/$HOME}"
+          # A pasta pode ser do usuário ou do root (quem clonou com sudo): o git roda como o dono.
+          if [ -O .git ]; then G=(git); else G=(sudo -n git); fi
+          echo "==> Pegando a main nova"
+          "${G[@]}" fetch --prune origin main
+          if [ "$("${G[@]}" rev-parse --abbrev-ref HEAD)" != main ]; then
+            "${G[@]}" checkout main 2>/dev/null || "${G[@]}" checkout -b main origin/main
+          fi
+          "${G[@]}" branch --set-upstream-to=origin/main main >/dev/null
+          "${G[@]}" merge --ff-only origin/main
+          "${G[@]}" log -1 --format='==> Versão: %h %s'
+          sudo -n bash deploy/install.sh < /dev/null
+          echo "==> Limpando imagens antigas"
+          sudo -n docker image prune -f >/dev/null || true
+          REMOTE
+
+      - name: O app responde
+        run: |
+          curl -fsS --retry 12 --retry-delay 10 --retry-all-errors "$APP_URL/api/health" \
+            || { echo "::error::$APP_URL/api/health não respondeu depois do deploy."; exit 1; }
+          echo
+          echo "No ar: $APP_URL"
+
+      - name: Apagar a chave
+        if: always()
+        run: rm -f ~/.ssh/deploy

@@ -144,6 +144,72 @@ sincroniza com o servidor.
 cd ~/retakegym && sudo git pull && sudo bash deploy/install.sh
 ```
 
+Com o deploy automático ligado (abaixo), isso acontece sozinho a cada PR mergeado na `main`.
+
+### Deploy automático (GitHub Actions)
+
+A cada merge na `main`, dois workflows rodam sozinhos:
+
+- **Deploy VPS** (`.github/workflows/deploy-vps.yml`) entra na VPS pelo SSH, deixa a pasta do app
+  na `main` mais nova e roda `sudo bash deploy/install.sh`. No fim ele testa
+  `https://gym.retaketecnologia.com.br/api/health`.
+- **Android APK** (`.github/workflows/android-apk.yml`) gera, assina e publica uma release nova do
+  APK. A versão é a do `frontend/package.json` se ela ainda não tem release; se já tem, é a última
+  `v*` com o último número +1 (v1.4.6, depois v1.4.7...). Para um merge que não deve gerar APK,
+  escreva `[sem apk]` na mensagem do merge.
+
+Mudanças só em `docs/`, `website/` ou arquivos `.md` não disparam nenhum dos dois.
+Para configurar o deploy, uma vez só:
+
+1. **Gerar um par de chaves só para o deploy**, no seu computador (Windows: PowerShell; Mac/Linux:
+   Terminal). Quando perguntar a senha (passphrase), só aperte Enter duas vezes:
+
+   ```bash
+   ssh-keygen -t ed25519 -C "github-deploy-retakegym" -f retakegym-deploy
+   ```
+
+   Saem dois arquivos: `retakegym-deploy` (a **privada**, vai para o GitHub e não pode vazar) e
+   `retakegym-deploy.pub` (a **pública**, vai para a VPS).
+
+2. **Colocar a pública na VPS.** Abra o `retakegym-deploy.pub` num editor de texto e copie a
+   linha inteira (começa com `ssh-ed25519`). Entre na VPS como sempre e rode, colando a linha no
+   lugar de `COLE_AQUI`:
+
+   ```bash
+   echo 'COLE_AQUI' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys
+   ```
+
+   Teste do seu computador: `ssh -i retakegym-deploy ubuntu@147.15.73.43 'sudo -n true && echo ok'`
+   tem que mostrar `ok` sem pedir senha.
+
+3. **Pegar a "impressão digital" da VPS** (para o GitHub ter certeza de que fala com ela). Do seu
+   computador:
+
+   ```bash
+   ssh-keyscan 147.15.73.43
+   ```
+
+   Guarde as linhas que começam com `147.15.73.43`.
+
+4. **Criar os secrets no GitHub.** No repositório, vá em **Settings > Secrets and variables >
+   Actions > New repository secret** e crie um de cada vez:
+
+   | Nome | Valor |
+   | --- | --- |
+   | `VPS_SSH_KEY` | o conteúdo inteiro do arquivo `retakegym-deploy` (a privada), da linha `-----BEGIN OPENSSH PRIVATE KEY-----` até a `-----END ...-----` |
+   | `VPS_HOST` | `147.15.73.43` |
+   | `VPS_USER` | `ubuntu` |
+   | `VPS_SSH_KNOWN_HOSTS` | as linhas do passo 3 (opcional, mas recomendado) |
+
+   Os secrets do APK (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`)
+   já estão lá e continuam iguais.
+
+5. **Testar:** aba **Actions > Deploy VPS > Run workflow**. Quando ficar verde, está ligado.
+
+Depois disso, apague o arquivo `retakegym-deploy` do seu computador (ou guarde num lugar seguro).
+Para desligar o acesso do GitHub à VPS, basta apagar a linha `github-deploy-retakegym` do
+`~/.ssh/authorized_keys`.
+
 **Fazer backup** (contas, senhas, fotos de perfil e todos os dados ficam em `data/`):
 
 ```bash
