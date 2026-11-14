@@ -183,3 +183,7 @@ select.input option,select.field option{background:var(--surface);color:var(--la
 .hdr.social-hdr h1{font-size:var(--fs-title2);line-height:1.2}
 .bw-goal-line{color:var(--gold-ink);margin-top:4px;gap:5px;padding:2px 0;background:none;border:0;font:inherit;font-size:var(--fs-footnote);cursor:pointer}
 .bw-rate{font-size:var(--fs-footnote)}
+/* the loop's progress under the week strip (rotation mode) */
+.home-loop{margin-top:12px;padding-top:12px;border-top:1px solid var(--card-line)}
+.home-loop .chips{gap:6px}
+.home-loop .chip{font-size:var(--fs-footnote);padding:5px 12px}

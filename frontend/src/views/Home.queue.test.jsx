@@ -59,11 +59,11 @@ const todayTitle = () => host.querySelector('.today-row .ttl')?.textContent
 const card = () => [...host.querySelectorAll('.card .card-head-sub')].map(e => e.textContent).find(x => x.includes('this week'))
 
 describe('Home — coach week progress row', () => {
-  it('replaces the weekday dots with one chip per session, in slot order, and lights the first', () => {
+  it('shows one chip per session under the week strip, in slot order, and lights the first', () => {
     setS()
     mount()
-    expect(host.querySelector('.week')).toBeNull()
-    expect(host.querySelectorAll('.wday').length).toBe(0)
+    // Retake: the week strip stays in a rotation too, so a day can be set to rest or to a session
+    expect(host.querySelectorAll('.week .wday').length).toBe(7)
     expect(host.querySelector('.queue .row .small').textContent).toBe('US W1')
     expect(chipTexts()).toEqual(['US W1 D1Up next', 'US W1 D2Later', 'US W1 D3Later'])
     expect(chips()[0].className).toBe('chip on')
@@ -127,11 +127,10 @@ describe('Home — coach week progress row', () => {
     expect(host.querySelector('.today-row .ss')).toBeNull()
   })
 
-  it('Rotation chosen with nothing built yet hides the weekday strip and offers an empty state instead', () => {
+  it('Rotation chosen with nothing built yet keeps the week strip and offers an empty state under it', () => {
     setS({ queue: null, rotation: null, scheduleMode: 'rotation', week: {} })
     mount()
-    expect(host.querySelector('.week')).toBeNull()
-    expect(host.querySelectorAll('.wday').length).toBe(0)
+    expect(host.querySelectorAll('.week .wday').length).toBe(7)
     expect(host.querySelector('.queue')).toBeNull()
     expect(host.textContent).toContain('No rotation yet')
     expect(todayTitle()).toBe('Rest day')

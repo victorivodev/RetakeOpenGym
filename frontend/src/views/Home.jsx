@@ -138,20 +138,20 @@ export default function Home() {
     <div className="card">
       {/* A running programme (lib/programmes.js) wrote this week's plan: where it stands, one tap from its screen. */}
       {progChip && <button type="button" className="chip ichip prog-chip" onClick={() => nav('/plan/programmes')}><Icon name="calendar" /><span>{progChip}</span></button>}
-      {/* A coach week runs by order, not by weekday, so its progress row stands in for the
-          seven dots (components/QueueRow.jsx). The today row below stays as it is: the queue's
-          next session reaches it through effectiveRoutineIds like any planned routine. */}
-      {rotating ? (queue ? <QueueRow S={S} today={todayISO()} onStart={onQueueStart} managed={managedQueue} /> : <div className="empty">
+      {/* The week strip shows in both modes (Retake): in a rotation each day's dot comes from the
+          loop (effectiveRoutineIds reads the queue), and tapping a day opens the same day sheet,
+          where you pin the loop's session to it or make it a rest day. The loop's progress row
+          (components/QueueRow.jsx) sits under the strip instead of replacing it. */}
+      <div className="row between wk-head">
+        <button className="iconbtn wk-nav" onClick={() => setWeekOffset(w => w - 1)} aria-label={t('Previous week')}><Icon name="chevronLeft" /></button>
+        <div className="small muted wk-label">{wkLabel}</div>
+        <button className="iconbtn wk-nav" onClick={() => setWeekOffset(w => w + 1)} aria-label={t('Next week')}><Icon name="chevronRight" /></button>
+      </div>
+      <div className="week">{strip}</div>
+      {rotating && (queue ? <div className="home-loop"><QueueRow S={S} today={todayISO()} onStart={onQueueStart} managed={managedQueue} /></div> : <div className="empty home-loop">
         {t('No rotation yet. Add routines to it in Plan.')}
         <div style={{ marginTop: 10 }}><Button size="sm" variant="tinted" onClick={() => nav('/plan')}>{t('Set up in Plan')}</Button></div>
-      </div>) : <>
-        <div className="row between wk-head">
-          <button className="iconbtn wk-nav" onClick={() => setWeekOffset(w => w - 1)} aria-label={t('Previous week')}><Icon name="chevronLeft" /></button>
-          <div className="small muted wk-label">{wkLabel}</div>
-          <button className="iconbtn wk-nav" onClick={() => setWeekOffset(w => w + 1)} aria-label={t('Next week')}><Icon name="chevronRight" /></button>
-        </div>
-        <div className="week">{strip}</div>
-      </>}
+      </div>)}
       {/* The week's plan as a countdown (#753, lib/week-left.js): "2 of 4 left this week". */}
       {left && <div className={'small dim wkleft' + (left.left > 0 ? '' : ' done')}>
         {left.left > 0 ? tn('{0} of {1} left this week', '{0} of {1} left this week', left.left, left.of) : t('All done this week. Nice.')}
