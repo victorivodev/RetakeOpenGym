@@ -82,7 +82,8 @@ export function ChallengesCard({ S, now = new Date() }) {
   }, [key, month?.stored, freshKey, sandbox])
 
   if (!month) return null
-  const folded = S.challengesFold === true
+  // Folded unless opened (Retake redesign): Home shows the three bars, the rows are a tap away.
+  const folded = S.challengesFold !== false
   const done = progress.filter(p => p.done).length
   const gold = progress.length > 0 && done === progress.length
   const prevMonth = storedMonth(S, shiftMonth(key, -1))

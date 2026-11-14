@@ -30,7 +30,7 @@ beforeEach(() => {
   globalThis.matchMedia = () => ({ matches, addEventListener () {}, removeEventListener () {} })
   host = document.createElement('div'); document.body.appendChild(host); root = createRoot(host)
   const s = clone(DEF)
-  Object.assign(s, { unit: 'kg', workouts: [wo(2), wo(4)], routines: [], week: {}, dayPlan: {} })
+  Object.assign(s, { unit: 'kg', workouts: [wo(2), wo(4)], routines: [], week: {}, dayPlan: {}, challengesFold: false })
   useStore.setState({ S: s, user: null, tourSandbox: false })
 })
 afterEach(() => { act(() => root.unmount()); host.remove(); delete globalThis.matchMedia })
@@ -78,6 +78,16 @@ describe('Home card', () => {
     expect(party.classList.contains('still')).toBe(true)
     expect(party.querySelector('.sparks')).toBeNull()
     expect(el.textContent).toContain('Gold month. Take a bow.')
+  })
+
+  it('starts folded to a line on a profile that never chose', () => {
+    setS({ challengesFold: undefined })
+    const el = render()
+    expect(el.querySelector('.ch-list')).toBeNull()
+    expect(el.querySelectorAll('.ch-mini span')).toHaveLength(3)
+    act(() => el.querySelector('.card-head-toggle').click())
+    expect(S().challengesFold).toBe(false)
+    expect(el.querySelectorAll('.ch-row')).toHaveLength(3)
   })
 
   it('folds to a line, and the × hides it until next month', () => {

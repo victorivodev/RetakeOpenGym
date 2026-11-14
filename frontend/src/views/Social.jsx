@@ -11,7 +11,7 @@ import { nav } from '../lib/nav.js'
 import { noteText } from '../lib/social-notify.js'
 import { MOBILE } from '../lib/mobile.js'
 import { copyText } from '../lib/clipboard.js'
-import { Button, Section, Segmented } from '../components/ui.jsx'
+import { Button, Section, Segmented, MenuButton } from '../components/ui.jsx'
 import { Avatar, Post, Composer } from '../components/SocialParts.jsx'
 import Icon from '../components/Icon.jsx'
 import './Social.css'
@@ -49,9 +49,10 @@ export default function Social() {
   // Opening the screen reads the notes.
   useEffect(() => { if (data?.unread) socialApi.seen().catch(() => {}) }, [data?.unread])
 
-  const header = <div className="hdr">
+  // One line: back, the title. The tagline only greets someone not signed in yet.
+  const header = <div className="hdr social-hdr">
     <button className="iconbtn" data-back="/home" onClick={() => nav('/home')} aria-label={t('Home')}><Icon name="chevronLeft" /></button>
-    <div style={{ flex: 1, marginInlineStart: 12 }}><h1>{t('Friends')}</h1><div className="sub">{t('Train together, share only what you choose.')}</div></div>
+    <div style={{ flex: 1 }}><h1>{t('Friends')}</h1>{!user && <div className="sub">{t('Train together, share only what you choose.')}</div>}</div>
   </div>
   if (!user) return <div className="narrow social">{header}
     <div className="card"><b>{t('Sign in to use the friends network.')}</b>
@@ -67,7 +68,7 @@ export default function Social() {
       { value: 'challenges', label: t('Challenges') },
       { value: 'league', label: t('League') }
     ]} />
-    <div style={{ height: 14 }} />
+    <div style={{ height: 16 }} />
     {tab === 'feed' && <Feed data={data} S={S} reload={reload} goFriends={() => setTab('friends')} />}
     {tab === 'friends' && <Friends data={data} reload={reload} />}
     {tab === 'challenges' && <Challenges list={challenges} reload={loadChallenges} me={user} />}
@@ -76,37 +77,44 @@ export default function Social() {
 }
 
 function Feed({ data, S, reload, goFriends }) {
+  const me = useStore(s => s.user)
   const [card, setCard] = useState(null), [kind, setKind] = useState('text'), [weightFmt, setWeightFmt] = useState('percent')
+  // Folded to one line ("How was your training?") until tapped: the feed is what the screen is for.
+  const [writing, setWriting] = useState(false)
   const last = (S.workouts || []).at(-1)
   const weight = weightCard(S, weightFmt)
   const notes = data?.notifications?.filter(n => n.unread) || []
   if (!data) return <div className="muted small">{t('Loading…')}</div>
+  const close = () => { setWriting(false); setKind('text'); setCard(null) }
+  const chip = (k, icon, label, pick) => <button type="button" className={'social-chip' + (kind === k ? ' on' : '')} aria-pressed={kind === k} onClick={pick}><Icon name={icon} />{label}</button>
   return <>
     {notes.length > 0 && <div className="card social-notes">
-      {notes.slice(0, 6).map(n => <div className="social-note" key={n.id}><Icon name="bell" /><span>{noteText(n)} <span className="small muted">{ago(n.at)}</span></span></div>)}
+      {notes.slice(0, 4).map(n => <div className="social-note" key={n.id}><Icon name="bell" /><span>{noteText(n)} <span className="social-ctime">{ago(n.at)}</span></span></div>)}
     </div>}
     {data.people.length === 0 && <div className="card">
       <b>{t('Bring your friends')}</b>
       <div className="muted small" style={{ margin: '4px 0 12px' }}>{t('Invite your friends to the app. Their posts show up here, and yours for them.')}</div>
-      <Button variant="primary" icon="person" onClick={goFriends}>{t('Invite friends')}</Button>
+      <Button variant="primary" size="sm" icon="person" onClick={goFriends}>{t('Invite friends')}</Button>
     </div>}
-    <Section title={t('Share')}>
+    {!writing ? <button type="button" className="card social-start" onClick={() => setWriting(true)}>
+      <Avatar person={me} size={36} />
+      <span className="social-start-t">{t('How was your training?')}</span>
+      <Icon name="camera" className="social-start-i" />
+    </button> : <div className="card social-write">
       <div className="social-quick">
-        <button type="button" className={'social-chip' + (kind === 'text' ? ' on' : '')} onClick={() => { setKind('text'); setCard(null) }}><Icon name="pencil" />{t('Text or photo')}</button>
-        {last && <button type="button" className={'social-chip' + (kind === 'workout' ? ' on' : '')} onClick={() => { setKind('workout'); setCard(workoutCard(last, S)) }}><Icon name="dumbbell" />{t('Last workout')}</button>}
-        {weight && <button type="button" className={'social-chip' + (kind === 'weight' ? ' on' : '')} onClick={() => { setKind('weight'); setCard(weightCard(S, weightFmt)) }}><Icon name="scale" />{t('Weight progress')}</button>}
+        {chip('text', 'pencil', t('Text or photo'), () => { setKind('text'); setCard(null) })}
+        {last && chip('workout', 'dumbbell', t('Last workout'), () => { setKind('workout'); setCard(workoutCard(last, S)) })}
+        {weight && chip('weight', 'scale', t('Weight progress'), () => { setKind('weight'); setCard(weightCard(S, weightFmt)) })}
       </div>
-      {kind === 'weight' && <div className="social-row" style={{ marginTop: 8 }}>
-        <select className="input" aria-label={t('What to show')} value={weightFmt} onChange={e => { setWeightFmt(e.target.value); setCard(weightCard(S, e.target.value)) }}>
-          <option value="percent">{t('Only the percentage')}</option>
-          <option value="kg">{t('Before and after weight')}</option>
-        </select>
+      {kind === 'weight' && <div className="social-row">
+        <MenuButton title={t('What to show')} value={weightFmt} onChange={v => { setWeightFmt(v); setCard(weightCard(S, v)) }} options={[
+          { value: 'percent', label: t('Only the percentage') },
+          { value: 'kg', label: t('Before and after weight') }
+        ]} />
       </div>}
-      <Composer kind={kind} card={card} onDone={() => { setKind('text'); setCard(null); reload() }} />
-    </Section>
-    <Section title={t('Feed')}>
-      {!data.posts.length && <div className="muted small">{t('No posts yet. Share your first workout or invite a friend.')}</div>}
-    </Section>
+      <Composer kind={kind} card={card} onCancel={close} onDone={() => { close(); reload() }} />
+    </div>}
+    {!data.posts.length && <div className="muted small social-empty">{t('No posts yet. Share your first workout or invite a friend.')}</div>}
     {data.posts.map(p => <Post key={p.id} post={p} reload={reload} />)}
   </>
 }
@@ -197,12 +205,12 @@ function ProfileSettings({ me, reload }) {
     </div>
     <label className="social-field">{t('About you')}<input className="input" maxLength={240} value={bio} onChange={e => setBio(e.target.value)} placeholder={t('A little about you')} /></label>
     <label className="social-field">{t('Goal')}<input className="input" maxLength={100} value={goal} onChange={e => setGoal(e.target.value)} placeholder={t('Lose 5 kg, run 10 km…')} /></label>
-    <label className="social-field">{t('Who sees my profile and posts')}
-      <select className="input" value={visibility} onChange={e => setVisibility(e.target.value)}>
-        <option value="friends">{t('Only my friends')}</option>
-        <option value="public">{t('Everyone on the app')}</option>
-        <option value="private">{t('Nobody (I do not post)')}</option>
-      </select></label>
+    <div className="social-field">{t('Who sees my profile and posts')}
+      <MenuButton title={t('Who sees my profile and posts')} value={visibility} onChange={setVisibility} className="menu-btn-wide" options={[
+        { value: 'friends', label: t('Only my friends') },
+        { value: 'public', label: t('Everyone on the app') },
+        { value: 'private', label: t('Nobody (I do not post)') }
+      ]} /></div>
     <label className="social-check"><input type="checkbox" checked={rank} onChange={e => setRank(e.target.checked)} />{t('Show me in the friends league')}</label>
     <label className="social-check"><input type="checkbox" checked={muted} onChange={e => setMuted(e.target.checked)} />{t('Do not let friends poke me')}</label>
     <Button variant="primary" disabled={busy} onClick={save}>{t('Save profile')}</Button>
@@ -217,9 +225,7 @@ function Challenges({ list, reload, me }) {
     <Section title={t('New challenge')} footer={t('Your friends see it and can join. Each day you log a workout, check in. Whoever checks in on the most days wins.')}>
       <form className="social-row" onSubmit={e => { e.preventDefault(); if (title.trim()) run(async () => { await socialApi.createChallenge({ title, days }); setTitle('') }, t('Challenge created')) }}>
         <input className="input" maxLength={80} value={title} onChange={e => setTitle(e.target.value)} placeholder={t('e.g. 30 days without skipping')} />
-        <select className="input social-scope" aria-label={t('Length')} value={days} onChange={e => setDays(Number(e.target.value))}>
-          {[7, 14, 21, 30].map(n => <option key={n} value={n}>{t('{0} days', n)}</option>)}
-        </select>
+        <MenuButton title={t('Length')} value={days} onChange={setDays} className="social-scope" options={[7, 14, 21, 30].map(n => ({ value: n, label: t('{0} days', n) }))} />
       </form>
       <div style={{ height: 8 }} />
       <Button variant="primary" disabled={busy || !title.trim()} onClick={() => run(async () => { await socialApi.createChallenge({ title, days }); setTitle('') }, t('Challenge created'))}>{t('Create challenge')}</Button>
