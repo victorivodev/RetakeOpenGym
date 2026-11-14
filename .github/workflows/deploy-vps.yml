@@ -48,9 +48,16 @@ jobs:
           [ -n "$KEY" ] && [ -n "$HOST" ] && [ -n "$SSH_USER" ] || {
             echo "::error::Faltam os secrets VPS_SSH_KEY, VPS_HOST e VPS_USER (veja docs/DEPLOY_PT.md, Deploy automático)."; exit 1; }
           install -d -m 700 ~/.ssh
-          printf '%s\n' "$KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          # Uma chave copiada no Windows chega com fim de linha \r\n, que o ssh não lê ("error in
+          # libcrypto"): tira os \r e os espaços nas pontas das linhas.
+          printf '%s\n' "$KEY" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e '/^$/d' > ~/.ssh/deploy
+          chmod 600 ~/.ssh/deploy
+          grep -q -- '-----BEGIN .*PRIVATE KEY-----' ~/.ssh/deploy || {
+            echo "::error::VPS_SSH_KEY não parece uma chave privada (falta a linha -----BEGIN ... PRIVATE KEY-----). Cole o arquivo .key, não o .pub."; exit 1; }
+          ssh-keygen -y -f ~/.ssh/deploy >/dev/null || {
+            echo "::error::O ssh não conseguiu ler a VPS_SSH_KEY. Cole de novo o arquivo .key inteiro, do BEGIN ao END. Se a chave tem senha (passphrase), ela não serve aqui."; exit 1; }
           if [ -n "$KNOWN" ]; then
-            printf '%s\n' "$KNOWN" > ~/.ssh/known_hosts
+            printf '%s\n' "$KNOWN" | tr -d '\r' > ~/.ssh/known_hosts
           else
             echo "::warning::Sem o secret VPS_SSH_KNOWN_HOSTS: usando a chave que o servidor apresentar agora."
             ssh-keyscan -T 20 -p "$PORT" "$HOST" > ~/.ssh/known_hosts 2>/dev/null
