@@ -8,7 +8,7 @@ import { fmtDate } from '../lib/format.js'
 import { socialApi, getAvatar } from '../lib/api.js'
 import { socialError, ago, cardText } from '../lib/social.js'
 import { nav } from '../lib/nav.js'
-import { Button } from './ui.jsx'
+import { Button, MenuButton } from './ui.jsx'
 import Icon from './Icon.jsx'
 
 const toast = m => useUI.getState().toast(m)
@@ -82,10 +82,10 @@ export function Post({ post, reload }) {
     <div className="social-post-head">
       <button type="button" className="social-who" onClick={openAuthor}>
         <Avatar person={author} size={40} />
-        <span><b>{author.name}</b>{author.username && <span className="small muted"> @{author.username}</span>}
-          <span className="small muted social-when">{ago(post.at)}{post.scope === 'public' ? ' · ' + t('Public') : ''}</span></span>
+        <span className="social-name"><b>{author.name}</b>
+          <span className="social-when">{author.username ? '@' + author.username + ' · ' : ''}{ago(post.at)}{post.scope === 'public' ? ' · ' + t('Public') : ''}</span></span>
       </button>
-      {post.mine && <button type="button" className="iconbtn" aria-label={t('Delete post')} onClick={remove}><Icon name="trash" /></button>}
+      {post.mine && <button type="button" className="iconbtn social-del" aria-label={t('Delete post')} onClick={remove}><Icon name="trash" /></button>}
     </div>
     {post.text && <p className="social-text">{post.text}</p>}
     <PostCardView card={post.card} />
@@ -97,13 +97,13 @@ export function Post({ post, reload }) {
     </div>
     {comments.length > 0 && <div className="social-comments">
       {comments.map(c => <div className="social-comment" key={c.id}>
-        <span><b>{c.name}</b> {c.text} <span className="small muted">{ago(c.at)}</span></span>
+        <span><b>{c.name}</b> {c.text} <span className="social-ctime">{ago(c.at)}</span></span>
         {(c.mine || post.mine) && <button type="button" className="social-x" aria-label={t('Delete comment')} onClick={() => run(() => socialApi.removeComment(post.id, c.id))}><Icon name="xmark" /></button>}
       </div>)}
     </div>}
-    <form className="social-row" onSubmit={e => { e.preventDefault(); const v = comment.trim(); if (v) run(async () => { await socialApi.comment(post.id, v); setComment('') }) }}>
+    <form className="social-row social-reply" onSubmit={e => { e.preventDefault(); const v = comment.trim(); if (v) run(async () => { await socialApi.comment(post.id, v); setComment('') }) }}>
       <input className="input" maxLength={300} value={comment} onChange={e => setComment(e.target.value)} placeholder={t('Write a comment')} />
-      <button type="submit" className="iconbtn" aria-label={t('Send comment')} disabled={busy || !comment.trim()}><Icon name="chevronRight" /></button>
+      <button type="submit" className="iconbtn social-send" aria-label={t('Send comment')} disabled={busy || !comment.trim()}><Icon name="arrowUp" /></button>
     </form>
   </article>
 }
@@ -155,17 +155,16 @@ export function Composer({ kind = 'text', card = null, initialText, onDone, onCa
     {photo && <div className="social-photo-pick"><img className="social-photo" src={photo} alt={t('Photo of the post')} />
       <button type="button" className="iconbtn social-photo-x" aria-label={t('Remove photo')} onClick={() => setPhoto(null)}><Icon name="xmark" /></button></div>}
     <input ref={file} type="file" accept="image/*" hidden onChange={pick} />
-    <div className="social-row">
-      <Button size="sm" icon="camera" onClick={() => file.current?.click()}>{photo ? t('Change photo') : t('Add a photo')}</Button>
-      <select className="input social-scope" aria-label={t('Who sees it')} value={scope} onChange={e => setScope(e.target.value)}>
-        <option value="friends">{t('Friends')}</option>
-        <option value="public">{t('Everyone on the app')}</option>
-      </select>
+    <div className="social-row social-tools">
+      <button type="button" className="iconbtn social-tool" aria-label={photo ? t('Change photo') : t('Add a photo')} onClick={() => file.current?.click()}><Icon name="camera" /></button>
+      <MenuButton title={t('Who sees it')} value={scope} onChange={setScope} className="social-scope" options={[
+        { value: 'friends', label: t('Friends') },
+        { value: 'public', label: t('Everyone on the app') }
+      ]} />
+      <span className="grow" />
+      {onCancel && <Button size="sm" variant="ghost" className="dim" onClick={onCancel}>{t('Not now')}</Button>}
+      <Button size="sm" variant="primary" disabled={busy || (!text.trim() && !photo)} onClick={publish}>{busy ? t('Posting…') : t('Post')}</Button>
     </div>
-    <div className="social-row">
-      {onCancel && <Button onClick={onCancel}>{t('Not now')}</Button>}
-      <Button variant="primary" disabled={busy || (!text.trim() && !photo)} onClick={publish}>{busy ? t('Posting…') : t('Post')}</Button>
-    </div>
-    <div className="small muted">{t('One photo per post. Only what you see here is shared.')}</div>
+    <div className="social-hint">{t('One photo per post. Only what you see here is shared.')}</div>
   </div>
 }

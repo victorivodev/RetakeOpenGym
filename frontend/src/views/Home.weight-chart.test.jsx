@@ -43,7 +43,7 @@ describe('Home body-weight card points', () => {
       { d: '2022-12-01', w: 76.3, t: stamp },
     ]
     mountWith(imported)
-    const chart = mocks.charts.find(c => c.h === 130)   // the weight card's chart
+    const chart = mocks.charts.find(c => c.h === 110)   // the weight card's chart
     expect(chart.points.map(p => p.t)).toEqual(imported.map(b => noonOf(b.d)))
     expect(chart.points.map(p => p.y)).toEqual([90, 89, 76.3])
     expect(chart.points.map(p => p.d)).toEqual(imported.map(b => b.d))
