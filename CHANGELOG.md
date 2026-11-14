@@ -4,6 +4,18 @@ Newest first. Each release is a `## vX.Y.Z (YYYY-MM-DD)` section, and the releas
 GitHub and GitLab are that section, word for word. New work goes under `## Unreleased` until the
 tag. Write it for the people using the app: what changed for them, short, no em dashes.
 
+## v1.4.6 (2026-11-14)
+
+**Rede de amigos.** Uma aba nova com o feed: compartilhe o treino de hoje com uma foto, curta e
+comente o que os amigos postaram e veja o ranking da semana. Todo mundo do servidor já
+entra como amigo.
+
+**Desafios e convites.** Crie desafios com os amigos e acompanhe quem está na frente. Qualquer
+pessoa pode gerar um convite: quem entra pelo link já começa como seu amigo.
+
+**Avisos no app.** Curtidas, comentários e novos posts aparecem como aviso enquanto o app está
+aberto.
+
 ## v1.4.5 (2026-11-10)
 
 **Retake Gym: entrar com e-mail e senha.** Acabou a chave de acesso e o código de pareamento. O
