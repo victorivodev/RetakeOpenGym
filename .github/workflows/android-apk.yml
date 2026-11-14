@@ -1,5 +1,9 @@
 # Retake Gym: builds the Android app (APK) for installing outside any store.
 #
+#   - every push to main (a merged PR) publishes the next version on its own: the version in
+#     frontend/package.json if it has no tag yet, otherwise the newest v* tag with the patch + 1
+#     (versionName and versionCode follow; the repository files are not changed). A merge whose
+#     commit message has [sem apk] is skipped;
 #   - a tag v<version> (e.g. v1.4.5) publishes a GitHub release with RetakeGym-<version>.apk and its
 #     .sha256; the app in the phones finds it there and offers the update (lib/update.js);
 #   - "Run workflow" in the Actions tab builds the same APK and keeps it as a downloadable artifact.
@@ -14,13 +18,22 @@ name: Android APK
 on:
   push:
     tags: ['v*']
+    branches: [main]
+    paths-ignore: ['docs/**', 'website/**', '**.md']
   workflow_dispatch:
 
 permissions:
   contents: write
 
+# Two merges close together: the second waits, so it sees the first one's tag and takes the next
+# version instead of racing it for the same one.
+concurrency:
+  group: android-apk-${{ github.ref_type }}
+  cancel-in-progress: false
+
 jobs:
   apk:
+    if: github.ref_type == 'tag' || !contains(github.event.head_commit.message, '[sem apk]')
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -48,12 +61,37 @@ jobs:
         working-directory: frontend
       - name: Version
         id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           VER=$(node -p "require('./frontend/package.json').version")
           if [ "${GITHUB_REF_TYPE}" = tag ] && [ "${GITHUB_REF_NAME#v}" != "$VER" ]; then
             echo "::error::Tag ${GITHUB_REF_NAME} does not match frontend/package.json version $VER"; exit 1
           fi
+          AUTO=0
+          if [ "${GITHUB_EVENT_NAME}" = push ] && [ "${GITHUB_REF_TYPE}" = branch ]; then
+            # Merge on main: package.json's version if it is still free, else the newest tag + 1.
+            LAST=$(gh api "repos/$GITHUB_REPOSITORY/tags" --paginate --jq '.[].name' \
+              | sed -n 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)$/\1/p' | sort -V | tail -1)
+            PKG=$VER
+            if [ -n "$LAST" ] && [ "$(printf '%s\n%s\n' "$LAST" "$PKG" | sort -V | tail -1)" = "$LAST" ]; then
+              VER="${LAST%.*}.$(( ${LAST##*.} + 1 ))"
+            fi
+            CODE=$(sed -n 's/.*versionCode \([0-9][0-9]*\).*/\1/p' frontend/android/app/build.gradle | head -1)
+            if [ "$VER" != "$PKG" ]; then
+              # One versionCode step per patch above package.json (so a later hand-made release
+              # that bumps both files the usual way keeps counting up), at least one.
+              STEP=1
+              [ "${VER%.*}" = "${PKG%.*}" ] && STEP=$(( ${VER##*.} - ${PKG##*.} ))
+              CODE=$(( CODE + STEP ))
+              (cd frontend && npm version "$VER" --no-git-tag-version --allow-same-version >/dev/null)
+              sed -i -E "s/versionCode [0-9]+/versionCode $CODE/; s/versionName \"[^\"]+\"/versionName \"$VER\"/" frontend/android/app/build.gradle
+            fi
+            echo "Automatic release v$VER (versionCode $CODE; package.json $PKG, newest tag ${LAST:-none})"
+            AUTO=1
+          fi
           echo "ver=$VER" >> "$GITHUB_OUTPUT"
+          echo "auto=$AUTO" >> "$GITHUB_OUTPUT"
       - name: Phone bundle + cap sync
         run: npm run build:mobile
         working-directory: frontend
@@ -85,16 +123,26 @@ jobs:
           path: out/
           retention-days: 30
       - name: Release
-        if: github.ref_type == 'tag'
+        if: github.ref_type == 'tag' || steps.v.outputs.auto == '1'
         env:
           GH_TOKEN: ${{ github.token }}
           VER: ${{ steps.v.outputs.ver }}
+          AUTO: ${{ steps.v.outputs.auto }}
         # A release made by hand on GitHub (Releases -> Draft a new release, which also makes the
         # tag) already exists when this runs: the files are added to it instead.
+        # An automatic one never touches a release that appeared in the meantime (made by hand
+        # while this was building): it stops with a warning and the next merge takes the next number.
         run: |
-          if gh release view "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" out/* -R "$GITHUB_REPOSITORY" --clobber
+          TAG="v$VER"
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            if [ "$AUTO" = 1 ]; then
+              echo "::warning::$TAG was published while this was building; this APK was not uploaded (it is in the run's artifacts)."
+              exit 0
+            fi
+            gh release upload "$TAG" out/* -R "$GITHUB_REPOSITORY" --clobber
             exit 0
           fi
-          gh release create "$GITHUB_REF_NAME" out/* -R "$GITHUB_REPOSITORY" --title "Retake Gym $VER" \
+          TARGET=()
+          [ "$AUTO" = 1 ] && TARGET=(--target "$GITHUB_SHA")
+          gh release create "$TAG" out/* -R "$GITHUB_REPOSITORY" "${TARGET[@]}" --title "Retake Gym $VER" \
             --notes "Android: baixe **RetakeGym-$VER.apk** no celular e abra para instalar (permita instalar de fontes desconhecidas quando o Android pedir). Quem já tem o app recebe o aviso de atualização em Configurações."
