@@ -228,6 +228,23 @@ Baixe o arquivo para o seu computador de vez em quando:
 cd ~/retakegym && sudo docker compose -f deploy/docker-compose.yml logs -f --tail 100
 ```
 
+### Classificar o tipo dos treinos (uma vez só)
+
+Cada rotina tem um "Tipo de treino": Normal (padrão), "Mais carga, menos repetição" ou "Mais repetição, menos carga". Para dar o tipo às rotinas que já existiam, pelas repetições: 12 ou mais vira "Mais repetição, menos carga", 8 a 10 fica Normal, o resto fica Normal e aparece listado. Rode na VPS, depois que o deploy com essa versão terminou:
+
+```bash
+cd ~/retakegym
+sudo tar czf ~/backup-dados-$(date +%F-%H%M).tgz data
+# ensaio: só mostra
+sudo docker run --rm -v "$PWD":/repo:ro -v "$PWD/data":/data --entrypoint node retakegym-api:local /repo/scripts/set-routine-style.mjs --repo /repo --data /data --user Victor --dry-run
+# gravar (a API fica parada uns segundos)
+sudo docker compose -f deploy/docker-compose.yml stop api
+sudo docker run --rm -v "$PWD":/repo:ro -v "$PWD/data":/data --entrypoint node retakegym-api:local /repo/scripts/set-routine-style.mjs --repo /repo --data /data --user Victor
+sudo docker compose -f deploy/docker-compose.yml start api
+```
+
+Rotina que já tem tipo não é mexida, e rodar de novo não muda nada. O script guarda uma cópia em `data/state-<id>.json.bak-<data>`.
+
 ## Se algo der errado
 
 - **O site não abre:** confira as regras do passo 3 e se o DNS já aponta para o IP certo

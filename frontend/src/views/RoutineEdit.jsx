@@ -24,6 +24,7 @@ import { POLICIES_FOR, POLICY_NAME, POLICY_DESC, profileRule } from '../lib/prog
 import BodyMap from '../components/BodyMap.jsx'
 import { loadOfRoutine, rankOf, MUSCLE_NAME } from '../lib/muscles.js'
 import { viewTarget, exUnitOf } from '../lib/ex-unit.js'
+import { ROUTINE_STYLES, styleOf, styleName, setStyle } from '../lib/routine-style.js'
 
 export const ROUTINE_LONG_PRESS_MS = 380
 export const ROUTINE_DRAG_SLOP = 8
@@ -469,6 +470,11 @@ export default function RoutineEdit() {
     </div>
 
     <div className="sect-b" style={{ marginBottom: 16 }}>
+      {/* Retake Gym: what kind of session this routine is (lib/routine-style.js). A label for the
+          person; the progression below still decides the numbers. */}
+      <SelectRow icon="dumbbell" title={t('Workout type')} sheetTitle={t('Workout type')} stackedValue
+        value={styleOf(r)} onChange={v => update(s => { setStyle(s.routines.find(x => x.id === id), v) })}
+        options={ROUTINE_STYLES.map(v => ({ value: v, label: styleName(v) }))} />
       <SelectRow icon="chartLine" title={t('Progression')} sheetTitle={t('Progression')}
         value={r.prog || profileRule(S)} onChange={v => update(s => { s.routines.find(x => x.id === id).prog = v })}
         options={POLICIES_FOR.reps.map(p => ({ value: p, label: t(POLICY_NAME[p]), subtitle: t(POLICY_DESC[p]) }))} />
