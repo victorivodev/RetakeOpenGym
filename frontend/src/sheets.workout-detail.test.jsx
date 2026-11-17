@@ -249,7 +249,7 @@ describe('workout detail: one options row instead of a column of buttons', () =>
     const menu = mountTopSheet()
     const groups = [...menu.querySelectorAll('.menu-group')].map(g => [...g.querySelectorAll('.menu-item .tt')].map(e => e.textContent))
     expect(groups).toEqual([
-      ['Change date & time', 'Change duration', 'Save as routine'],
+      ['Change date & time', 'Change duration', 'Workout type', 'Save as routine'],
       ['Share with a friend', 'Share as image', 'Copy as text', 'Save as PDF', 'Export as .fit file'],
       ['Delete workout'],
     ])
