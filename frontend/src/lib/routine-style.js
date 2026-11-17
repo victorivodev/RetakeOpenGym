@@ -63,30 +63,37 @@ export function loggedReps(w) {
   return out
 }
 
-/** The most common value of a list (the higher one on a tie), or null. */
-function commonest(list) {
-  const n = new Map()
-  for (const v of list) n.set(v, (n.get(v) || 0) + 1)
-  let best = null, c = 0
-  for (const [v, k] of n) if (k > c || (k === c && v > best)) { best = v; c = k }
-  return best
+// A logged session reads as one kind when at least this share of its working sets is: a last
+// set or two that fell short (12, 12, 10) still makes a 12-rep session.
+const MOSTLY = 0.75
+
+/** What a logged session was from its sets' reps: 'reps' when mostly 12 or more, 'normal' when
+ *  mostly 8 to 10, null when it was a mix (some exercises at 12, others at 10) or something else. */
+export function styleFromLog(list) {
+  const reps = (list || []).map(Number).filter(n => Number.isFinite(n) && n > 0)
+  if (!reps.length) return null
+  const share = f => reps.filter(f).length / reps.length
+  if (share(n => n >= 12) >= MOSTLY) return 'reps'
+  if (share(n => n >= 8 && n <= 10) >= MOSTLY) return 'normal'
+  return null
 }
 
 /**
- * How a routine reads from its reps: from its plan first; when the plan does not settle it, from
- * the reps most of the sets of its latest logged workout had (12, 12, 10 is a 12-rep session).
- * Returns { style: 'reps' | 'normal' | null, from: 'plan' | 'log' | null, planned, logged }.
+ * How a routine reads from its reps: from what was done in its latest logged workout first (the
+ * plan can say 12 while the sets were 10), and from its plan only when it was never trained.
+ * Returns { style: 'reps' | 'normal' | null, from: 'log' | 'plan' | null, planned, logged }.
  */
 export function classifyRoutine(r, workouts) {
   const planned = plannedReps(r)
-  const byPlan = styleFromReps(planned)
   const last = (workouts || []).filter(w => w && [].concat(w.routineIds || w.routineId || []).includes(r?.id))
     .sort((a, b) => String(b.d || '').localeCompare(String(a.d || '')) || (Number(b.start) || 0) - (Number(a.start) || 0))[0]
   const logged = last ? loggedReps(last) : []
-  if (byPlan) return { style: byPlan, from: 'plan', planned, logged }
-  const top = commonest(logged)
-  const byLog = top == null ? null : styleFromReps([top])
-  return { style: byLog, from: byLog ? 'log' : null, planned, logged }
+  if (logged.length) {
+    const byLog = styleFromLog(logged)
+    return { style: byLog, from: byLog ? 'log' : null, planned, logged }
+  }
+  const byPlan = styleFromReps(planned)
+  return { style: byPlan, from: byPlan ? 'plan' : null, planned, logged }
 }
 
 /** The style a session (or a logged workout) has from its routines: the one they all share,

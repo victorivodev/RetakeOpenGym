@@ -8,9 +8,10 @@
  * from then on (the routine's "Workout type", frontend/src/lib/routine-style.js).
  *
  * Each routine that has no type yet is read by frontend/src/lib/routine-style.js classifyRoutine:
- * its planned reps first, and when those do not settle it, the reps most sets of its latest
- * logged workout had. 12 reps or more is "More reps, less weight"; 8 to 10 stays "Normal". Any
- * other routine (fewer than 8, 11, mixed) stays Normal and is listed, to be set by hand. A routine
+ * by what its latest logged workout did (three quarters of the sets at 12 reps or more is "More
+ * reps, less weight", at 8 to 10 stays "Normal"), and by its plan only when it was never trained.
+ * Any other routine (fewer than 8, or 12s and 10s mixed) stays Normal and is listed, to be set by
+ * hand. A routine
  * that already has a type is left as it is.
  *
  * Written the way PUT /api/data writes a document (as scripts/add-workouts.mjs does): the
