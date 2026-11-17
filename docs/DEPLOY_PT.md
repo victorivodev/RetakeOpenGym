@@ -230,7 +230,7 @@ cd ~/retakegym && sudo docker compose -f deploy/docker-compose.yml logs -f --tai
 
 ### Classificar o tipo dos treinos (uma vez só)
 
-Cada rotina tem um "Tipo de treino": Normal (padrão), "Mais carga, menos repetição" ou "Mais repetição, menos carga". Para dar o tipo às rotinas que já existiam, pelas repetições: 12 ou mais vira "Mais repetição, menos carga", 8 a 10 fica Normal, o resto fica Normal e aparece listado. Rode na VPS, depois que o deploy com essa versão terminou:
+Cada rotina tem um "Tipo de treino": Normal (padrão), "Mais carga, menos repetição" ou "Mais repetição, menos carga". Para dar o tipo às rotinas que já existiam, pelas repetições do último treino feito de cada uma (ou do plano, se nunca foi treinada): se 3/4 das séries foram de 12 ou mais vira "Mais repetição, menos carga", de 8 a 10 fica Normal, o resto (12 e 10 misturados) fica Normal e aparece listado. Rode na VPS, depois que o deploy com essa versão terminou:
 
 ```bash
 cd ~/retakegym

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { styleOf, setStyle, styleFromReps, plannedReps, loggedReps, classifyRoutine, styleOfRoutines } from './routine-style.js'
+import { styleOf, setStyle, styleFromReps, plannedReps, loggedReps, classifyRoutine, styleOfRoutines, styleFromLog } from './routine-style.js'
 
 describe('routine style', () => {
   it('reads a routine without the field, or with an unknown one, as normal', () => {
@@ -55,25 +55,38 @@ describe('plannedReps and loggedReps', () => {
 
 describe('classifyRoutine', () => {
   const routine = reps => ({ id: 'r1', name: 'Peito', ex: reps.map(n => ({ id: '0025', sets: 3, reps: n })) })
-  it('decides from the plan when the plan settles it', () => {
+  const done = (d, reps, id = 'r1') => ({ d, routineIds: [id], entries: [{ sets: reps.map(r => ({ r })) }] })
+  it('decides from the plan when the routine was never trained', () => {
     expect(classifyRoutine(routine([12, 12]), []).style).toBe('reps')
     expect(classifyRoutine(routine([8, 10]), []).style).toBe('normal')
     expect(classifyRoutine(routine([8, 10]), []).from).toBe('plan')
+    expect(classifyRoutine(routine([12, 10]), []).style).toBe(null)
   })
-  it('falls back to the reps most sets of the latest workout of the routine had', () => {
+  it('goes by what the latest workout of the routine did, over its plan', () => {
     const workouts = [
-      { d: '2026-11-01', routineIds: ['r1'], entries: [{ sets: [{ r: 8 }, { r: 8 }, { r: 8 }] }] },
-      { d: '2026-11-10', routineIds: ['r1'], entries: [{ sets: [{ r: 12 }, { r: 12 }, { r: 10 }] }] },
-      { d: '2026-11-12', routineIds: ['other'], entries: [{ sets: [{ r: 5 }] }] },
+      done('2026-11-01', [8, 8, 8]),
+      done('2026-11-10', [12, 12, 10, 12, 12, 12]),
+      done('2026-11-12', [5], 'other'),
     ]
-    const c = classifyRoutine(routine([12, 10]), workouts)
+    const c = classifyRoutine(routine([10]), workouts)
     expect(c.style).toBe('reps')
     expect(c.from).toBe('log')
-    expect(c.logged).toEqual([12, 12, 10])
+    expect(c.logged).toEqual([12, 12, 10, 12, 12, 12])
+    // Planned at 12, done at 10: a normal session.
+    expect(classifyRoutine(routine([12]), [done('2026-11-10', [10, 10, 8, 10, 12, 9, 10, 10])]).style).toBe('normal')
   })
-  it('stays undecided when neither the plan nor the log settles it', () => {
-    expect(classifyRoutine(routine([12, 10]), []).style).toBe(null)
-    expect(classifyRoutine(routine([6]), [{ d: '2026-11-10', routineId: 'r1', entries: [{ sets: [{ r: 6 }] }] }]).style).toBe(null)
+  it('leaves a session that mixed 12s and 10s undecided', () => {
+    expect(classifyRoutine(routine([12, 10]), [done('2026-11-10', [12, 12, 12, 10, 10, 10])]).style).toBe(null)
+    expect(classifyRoutine(routine([6]), [done('2026-11-10', [6, 6])]).style).toBe(null)
+  })
+})
+
+describe('styleFromLog', () => {
+  it('needs three quarters of the sets to agree', () => {
+    expect(styleFromLog([12, 12, 12, 10])).toBe('reps')
+    expect(styleFromLog([12, 12, 10, 10])).toBe(null)
+    expect(styleFromLog([10, 10, 9, 12])).toBe('normal')
+    expect(styleFromLog([])).toBe(null)
   })
 })
 
