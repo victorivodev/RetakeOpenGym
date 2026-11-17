@@ -26,12 +26,12 @@ const list = v => (Array.isArray(v) ? v : [])
 const keyOf = w => (w?.id != null ? w.id : legacySyncKey(w))
 
 // The fields of the whole workout the editor can change — its note, its name (renamed, or derived
-// again when a routine is added) and the body weight it was logged with — which the history can
+// again when a routine is added), the body weight it was logged with and its workout type, which the history can
 // change too while the editor is open: WorkoutDetail writes the note, and a sync brings in what
 // another device wrote. Save takes the draft's value only where the editor changed it, so an
 // editor opened on an old note does not write that old note back over a newer one, or delete a
 // note written meanwhile. The note is compared as the finish writes it, trimmed.
-const SESSION_FIELDS = ['note', 'name', 'bw']
+const SESSION_FIELDS = ['note', 'name', 'bw', 'style']
 const sessionField = (w, k) => (k === 'note' ? (w?.note || '').trim() : (w?.[k] ?? null))
 
 // The same data whatever order its keys were written in. A key holding undefined is no key, as it

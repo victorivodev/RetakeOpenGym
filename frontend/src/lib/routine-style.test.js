@@ -104,3 +104,55 @@ describe('styleOfRoutines', () => {
     expect(styleOfRoutines(routines, ['a', 'c'])).toBe('normal')
   })
 })
+
+// The type moved from the routine onto the workout being done (Victor: "no treino que eu tô
+// fazendo, não na rotina").
+import { sessionStyleOf, setSessionStyle, styleToSave, workoutStyle } from './routine-style.js'
+import { buildCompletedWorkout } from './finish-workout.js'
+import { editCompletedSession, saveWorkoutEdit } from './session-edit.js'
+
+describe('workout type on the session', () => {
+  const routines = [{ id: 'costas', style: 'reps', ex: [] }, { id: 'perna', ex: [] }]
+  const done = { id: '0025', sets: [{ w: 40, r: 12, done: true }], target: { mode: 'reps' } }
+
+  it('a new session is Normal until picked, whatever its routine was classified as', () => {
+    const a = { id: 'w', routineIds: ['costas'], entries: [] }
+    expect(sessionStyleOf(a, routines)).toBe('normal')
+    setSessionStyle(a, 'load')
+    expect(sessionStyleOf(a, routines)).toBe('load')
+    setSessionStyle(a, 'banana')
+    expect(a.style).toBe('normal')
+  })
+
+  it('the finish always writes the type of a new session, Normal included', () => {
+    const base = { id: 'w', d: '2026-11-17', start: 1, routineIds: ['costas'], name: 'Costas', entries: [done] }
+    expect(buildCompletedWorkout(base, { end: 2 }).style).toBe('normal')
+    expect(buildCompletedWorkout({ ...base, style: 'reps' }, { end: 2 }).style).toBe('reps')
+    expect(styleToSave({ editingWorkoutId: 'x' })).toBeNull()
+  })
+
+  it('an old workout without a type reads the one its routine had; a saved type wins', () => {
+    expect(workoutStyle({ routineIds: ['costas'] }, routines)).toBe('reps')
+    expect(workoutStyle({ routineId: 'costas' }, routines)).toBe('reps')
+    expect(workoutStyle({ routineIds: ['perna'] }, routines)).toBe('normal')
+    expect(workoutStyle({ routineIds: ['costas'], style: 'normal' }, routines)).toBe('normal')
+    expect(workoutStyle({ routineIds: [] }, routines)).toBe('normal')
+  })
+
+  it('editing an old workout keeps it reading its routine, unless the type is changed there', () => {
+    const state = () => ({
+      active: null, exWeights: {}, routines: structuredClone(routines),
+      workouts: [{ id: 'old', d: '2026-11-10', start: 1000, end: 2000, routineIds: ['costas'], entries: [structuredClone(done)] }],
+    })
+    const a = state()
+    editCompletedSession(a, 'old')
+    expect(sessionStyleOf(a.active, a.routines)).toBe('reps')
+    a.active.entries[0].sets[0].w = 45
+    expect(saveWorkoutEdit(a)).not.toHaveProperty('style')
+
+    const b = state()
+    editCompletedSession(b, 'old')
+    setSessionStyle(b.active, 'load')
+    expect(saveWorkoutEdit(b).style).toBe('load')
+  })
+})

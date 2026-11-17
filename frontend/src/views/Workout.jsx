@@ -71,7 +71,7 @@ import { setTrendOn, setTrendsFor, trendGlyph, trendLabel } from '../lib/set-tre
 import { formulaOf } from '../lib/onerm.js'
 import { setNoteOf } from '../lib/set-notes.js'
 import { isOn } from '../lib/modules.js'
-import { styleOfRoutines, styleShort } from '../lib/routine-style.js'
+import { ROUTINE_STYLES, sessionStyleOf, setSessionStyle, styleName, styleShort } from '../lib/routine-style.js'
 
 // How long after a key starts a hold the same key is not yet its "Done" (#133). A USB button
 // that bounces, or a double press, sends two presses a moment apart: the first starts the hold,
@@ -1711,8 +1711,14 @@ function ActiveWorkout() {
   const gyms = gymsOf(S)
   const gymNow = activeGym(S)
   const gymSwitchable = !editing && !A.backfill && gyms.length > 1
-  // Retake Gym: the routine's type ("More reps"), beside the time and the set count.
-  const sessionStyle = styleOfRoutines(S.routines, A.routineIds ?? A.routineId)
+  // Retake Gym: this workout's type (lib/routine-style.js), Normal until picked. Picked here, on the
+  // session, from the chip under the name or the header ⋯.
+  const sessionStyle = sessionStyleOf(A, S.routines)
+  const openStyleMenu = () => menuSheet({
+    title: t('Workout type'),
+    items: ROUTINE_STYLES.map(v => ({ icon: 'dumbbell', label: styleName(v), on: v === sessionStyle,
+      onClick: () => update(s => { setSessionStyle(s.active, v) }) })),
+  })
   const gymShown = editing ? (A.gym?.name || null) : gymSwitchable && gymNow ? gymLabel(gymNow) : null
   const askSwitchGym = g => {
     if (!g || g.id === gymNow?.id) return
@@ -1748,6 +1754,7 @@ function ActiveWorkout() {
         A.backfill && A.entries.length > 0 && { icon: 'checkCircle', label: t('Mark all sets done'), onClick: markAllDone },
         { icon: 'plusCircle', label: t('Add exercise'), onClick: addExercise },
         { icon: 'note', label: A.note ? t('Edit session note') : t('Add session note'), onClick: sessionNoteSheet },
+        { icon: 'dumbbell', label: t('Workout type'), sub: styleName(sessionStyle), onClick: openStyleMenu },
         { icon: 'layout', label: t('Layout'), sub: LAYOUT_LABEL[workoutView] || LAYOUT_LABEL.cards, onClick: openLayoutMenu },
       ] },
       { more: [{ items: [
@@ -2406,9 +2413,10 @@ function ActiveWorkout() {
       {editing
         ? <button className="iconbtn" aria-label={t('Close editor')} title={t('Close editor')} onClick={() => exitWorkoutEdit()}><Icon name="xmark" /></button>
         : <button className="iconbtn" aria-label={t('Minimize')} title={t('Minimize')} onClick={() => nav('/home')}><Icon name="chevronDown" /></button>}
-      <div className="whdr-mid"><div className="whdr-name">{A.name}</div><div className="sub">{(A.backfill || editing) ? fmtDate(A.d, true) : <Elapsed start={A.start} />} · {t('{0} sets', done + '/' + total)}{sessionStyle !== 'normal' && ' · ' + styleShort(sessionStyle)}{!(A.backfill || editing) && isOn(S, 'health') && <LiveHeartRate />}</div>{gymShown && (gymSwitchable
+      <div className="whdr-mid"><div className="whdr-name">{A.name}</div><div className="sub">{(A.backfill || editing) ? fmtDate(A.d, true) : <Elapsed start={A.start} />} · {t('{0} sets', done + '/' + total)}{!(A.backfill || editing) && isOn(S, 'health') && <LiveHeartRate />}</div>{gymShown && (gymSwitchable
         ? <button type="button" className="whdr-gym" onClick={openGymMenu} aria-label={t('Gym: {0}', gymShown)}><Icon name="house" />{gymShown}</button>
-        : <span className="whdr-gym"><Icon name="house" />{gymShown}</span>)}</div>
+        : <span className="whdr-gym"><Icon name="house" />{gymShown}</span>)}
+        <button type="button" className={'whdr-gym whdr-style' + (sessionStyle !== 'normal' ? ' on' : '')} onClick={openStyleMenu} aria-haspopup="dialog" aria-label={t('Workout type') + ': ' + styleName(sessionStyle)}><Icon name="dumbbell" />{styleShort(sessionStyle)}</button></div>
       {!chipRow && sessionMap}
       <button className="iconbtn" data-tour="workout-more" aria-label={t('Workout options')} title={t('Workout options')} onClick={openViewMenu}><Icon name="more" /></button>
       <button className="btn primary pill whdr-finish" data-tour="finish" aria-label={editing ? t('Save changes') : undefined}

@@ -31,7 +31,6 @@ import {
   chooseRotation, chooseFixedWeek, sequenceOf, isSimpleSequence, segmentAt, REST,
 } from '../lib/rotation.js'
 import { isOn } from '../lib/modules.js'
-import { styleOf, styleShort } from '../lib/routine-style.js'
 
 // Plan has two views (v1.3.11): Schedule (how you train, and when) and Routines (what you
 // train). The last one you looked at comes back: a per-device convenience, never synced, so it
@@ -454,7 +453,7 @@ function Routines({ S, update, nav }) {
   // The weekdays a routine is on, short, in the order the week runs.
   const order = weekOrder(weekStartOf(S))
   const daysOf = id => order.filter(d => [].concat(S.week[d] || []).includes(id)).map(d => t(DAYS[d]))
-  const sub = r => [exCount(r.ex.length), styleOf(r) !== 'normal' ? styleShort(styleOf(r)) : '', daysOf(r.id).join(', ')].filter(Boolean).join(' · ')
+  const sub = r => [exCount(r.ex.length), daysOf(r.id).join(', ')].filter(Boolean).join(' · ')
 
   return <>
     <div className="row between plan-sec-h plan-routines-bar">
