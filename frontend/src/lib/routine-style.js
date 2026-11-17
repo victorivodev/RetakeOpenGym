@@ -1,12 +1,16 @@
-// Retake Gym: a routine's style, the kind of session it is meant to be.
+// Retake Gym: the workout type, the kind of session it is.
 //
 //   'load'  "More weight, fewer reps"
 //   'reps'  "More reps, less weight"
 //   (none)  "Normal", the default: a routine without the field is a normal one.
 //
-// Stored on the routine as `style`, and only when it is not normal, so a routine nobody touched
-// keeps the shape it had (the same way `excludeFromProgression` is left out when off). It is a
-// label for the person: it changes nothing the progression engine decides.
+// It is picked on the workout being done (the header of the running session, Normal until
+// changed) and saved on the logged workout as `style`, always, 'normal' included. A logged
+// workout without the field is one from before that: it reads the type its routine had, since
+// the first version (PR #12) set it on the routine and Victor's routines were classified on the
+// server, so that history keeps its type without any data being rewritten. The routine's own
+// `style` is no longer edited anywhere; it stays only for that read-back.
+// It is a label for the person: it changes nothing the progression engine decides.
 import { t } from './i18n-core.js'
 import { modeOf } from './history.js'
 import { isPyramid } from './pyramid.js'
@@ -103,4 +107,34 @@ export function styleOfRoutines(routines, ids) {
   if (!list.length) return 'normal'
   const s = styleOf(list[0])
   return list.every(r => styleOf(r) === s) ? s : 'normal'
+}
+
+const known = s => s === 'normal' || s === 'load' || s === 'reps'
+
+/** The type of a session, running or being edited: its own once picked; a new session is Normal
+ *  until changed, and the editor of an old workout shows what that workout reads as. */
+export function sessionStyleOf(active, routines) {
+  if (!active) return 'normal'
+  if (known(active.style)) return active.style
+  return active.editingWorkoutId != null ? workoutStyle(active, routines) : 'normal'
+}
+
+/** Picks the type of the running session (or of the workout being edited), in place. */
+export function setSessionStyle(active, s) {
+  if (active) active.style = known(s) ? s : 'normal'
+}
+
+/** What the finish writes as the workout's `style`: the one picked, Normal for a new session, and
+ *  nothing for an edit of an old workout where it was never picked (it keeps reading its
+ *  routine's). */
+export function styleToSave(active) {
+  if (known(active?.style)) return active.style
+  return active?.editingWorkoutId != null ? null : 'normal'
+}
+
+/** The type of a logged workout: its own, or for one saved before the type moved onto the
+ *  workout, the one its routines had. */
+export function workoutStyle(w, routines) {
+  if (known(w?.style)) return w.style
+  return styleOfRoutines(routines, w?.routineIds ?? w?.routineId)
 }

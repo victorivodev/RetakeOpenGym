@@ -103,6 +103,7 @@ import { copyText } from './lib/clipboard.js'
 import { queueRemaining, pinState } from './lib/queue.js'
 import { DAY_NOTE_TAGS, DAY_NOTE_LABEL, DAY_NOTE_ICON, dayNoteOf, dayNoteLine, canNoteDay, withDayNote } from './lib/day-notes.js'
 import { isOn } from './lib/modules.js'
+import { ROUTINE_STYLES, styleName, styleShort, workoutStyle } from './lib/routine-style.js'
 
 const S = () => useStore.getState().S
 const update = (...a) => useStore.getState().update(...a)
@@ -3237,6 +3238,7 @@ function WorkoutDetail({ w, close }) {
         { items: [
           { icon: 'calendar', label: t('Change date & time'), onClick: () => workoutDateSheet(w, close) },
           { icon: 'stopwatch', label: t('Change duration'), onClick: () => workoutDurationSheet(w, close) },
+          { icon: 'dumbbell', label: t('Workout type'), sub: styleName(wStyle), onClick: openStyleMenu },
           { icon: 'plus', label: t('Save as routine'), onClick: saveAsRoutine },
         ] },
         { title: t('Share'), items: [
@@ -3253,11 +3255,23 @@ function WorkoutDetail({ w, close }) {
       ],
     })
   }
+  // Retake Gym: the workout type (lib/routine-style.js), shown under the name and changed from the
+  // options, on the saved record and stamped like the note.
+  const wStyle = workoutStyle(st.workouts.find(x => sameWorkout(x, w)) || w, st.routines)
+  const openStyleMenu = () => menuSheet({
+    title: t('Workout type'),
+    items: ROUTINE_STYLES.map(v => ({ icon: 'dumbbell', label: styleName(v), on: v === wStyle, onClick: () => update(s => {
+      const rec = s.workouts.find(x => sameWorkout(x, w))
+      if (!rec || rec.style === v) return
+      rec.style = v
+      stampWorkout(rec)
+    }) })),
+  })
   const groups = sessionSections(w.entries)
   const grouped = groups.length > 1 || (groups[0] && groups[0].rid && (w.routineIds || []).length > 1)
   return <>
     <h3>{w.name}</h3>
-    <div className="muted small" style={{ marginBottom: 12 }}>{[fmtDate(w.d, true), ...durPart(w.end - w.start), fmtVol(sessionVolume(w, st), st.unit), ...(w.bw ? [fmtNum(w.bw) + ' ' + st.unit] : [])].join(' · ')}</div>
+    <div className="muted small" style={{ marginBottom: 12 }}>{[fmtDate(w.d, true), ...durPart(w.end - w.start), fmtVol(sessionVolume(w, st), st.unit), ...(w.bw ? [fmtNum(w.bw) + ' ' + st.unit] : []), styleName(wStyle)].join(' · ')}</div>
     {grouped ? groups.map(g => {
       const r = g.rid ? st.routines.find(x => x.id === g.rid) : null
       const items = g.items.map(i => w.entries[i])
@@ -3424,10 +3438,12 @@ export function WorkoutRow({ w, onClick, tour }) {
   const st = useStore(s => s.S)
   const glyph = glyphOf((st.routines.find(r => r.id === w.routineId) || {}).emoji)
   const mediaN = workoutMediaCount(w)
+  // Retake Gym: the workout type, when it is not the normal one (lib/routine-style.js).
+  const wStyle = workoutStyle(w, st.routines)
   return <div className="item" data-tour={tour} {...tappable(onClick)}>
     <span className="lrow-i" style={{ width: 34, height: 34, borderRadius: 8, fontSize: 19 }}><Icon name={glyph} /></span>
     <div className="grow"><div className="tt">{w.name}</div>
-      <div className="ss">{[fmtDate(w.d, true), ...durPart(w.end - w.start), tn('{0} set', '{0} sets', setsDone(w)), fmtVol(sessionVolume(w, st), st.unit)].join(' · ')}</div></div>
+      <div className="ss">{[fmtDate(w.d, true), ...durPart(w.end - w.start), tn('{0} set', '{0} sets', setsDone(w)), fmtVol(sessionVolume(w, st), st.unit), ...(wStyle !== 'normal' ? [styleShort(wStyle)] : [])].join(' · ')}</div></div>
     {mediaN > 0 && <span className="wrow-media" title={tn('{0} photo or video', '{0} photos or videos', mediaN)} aria-label={tn('{0} photo or video', '{0} photos or videos', mediaN)}><Icon name="image" />{mediaN}</span>}
     {w.prs && w.prs.length > 0 && <span className="pr"><Icon name="trophy" />{w.prs.length} PR</span>}
     <Icon name="chevronRight" className="chev" />

@@ -1186,6 +1186,9 @@ body.chips-dragging *{cursor:inherit}
 .whdr-gym{display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-caption);line-height:1.3;color:var(--label-2);background:none;border:0;padding:0;margin-top:1px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 button.whdr-gym{color:var(--acc-ink);cursor:pointer}
 .whdr-gym .icon,.whdr-gym svg{width:13px;height:13px;flex:none}
+/* Retake Gym: the workout type chip, beside the gym. Normal reads quiet, a picked type in the accent. */
+.whdr-gym+.whdr-style{margin-inline-start:10px}
+button.whdr-style:not(.on){color:var(--label-2)}
 .gym-of-list .icon,.gym-of-list svg{width:13px;height:13px;vertical-align:-2px}
 .btn.pill.whdr-finish{width:auto;flex:none;padding:8px 16px;border-radius:99px;font-size:var(--fs-subhead);max-width:40%}
 /* Animations set to Small: the picture beside the exercise name, with an expand badge. */

@@ -2,6 +2,7 @@
 // exercise the exact shape the UI writes without mounting React or mutating store state.
 import { bestWeightForEntry, cleanupSg } from './history.js'
 import { hasCompletedWork, isSideSet } from './workout-model.js'
+import { styleToSave } from './routine-style.js'
 
 // planSec is live-session bookkeeping: a hold displaced before it finished puts its plan aside so
 // the row still knows what it is asking for (Workout.startTimed). A finished session keeps only
@@ -106,6 +107,8 @@ export function buildCompletedWorkout(active, { end = Date.now(), prs = [], snap
   cleanupSg(entries)
 
   const sessionNote = (active?.note || '').trim()
+  // Retake Gym: the workout type picked on the session (lib/routine-style.js).
+  const style = styleToSave(active)
   const routineIds = [].concat(active?.routineIds ?? (active?.routineId ? [active.routineId] : []))
   // Legacy `w.excludeFromProgression` mirror: kept for older builds and external readers, but
   // it only makes sense when the *whole* session is excluded. Derived from the completed
@@ -126,6 +129,7 @@ export function buildCompletedWorkout(active, { end = Date.now(), prs = [], snap
     prs,
     ...(allNoProg ? { excludeFromProgression: true } : {}),
     ...(sessionNote ? { note: sessionNote } : {}),
+    ...(style ? { style } : {}),
     // The gym it was done at (#808, lib/gym-inventory.js): { id, name }, so editing it later loads
     // that gym's plates and the history can say where. Only when there are gyms.
     ...(active.gym && typeof active.gym === 'object' && active.gym.id != null ? { gym: { id: active.gym.id, name: String(active.gym.name || '') } } : {}),
