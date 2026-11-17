@@ -1,0 +1,54 @@
+{
+  "about": "Ombro dentro das rotinas, como Empurrar / Puxar / Perna (thread de 2026-11-17).",
+  "routines": [
+    {
+      "match": "peito",
+      "add": [
+        {
+          "exercise": "0405",
+          "sets": 3,
+          "reps": 10,
+          "before": "triceps",
+          "unlessName": "shoulder press|desenvolvimento|press de ombros"
+        },
+        {
+          "exercise": "0334",
+          "sets": 3,
+          "reps": 12,
+          "before": "triceps",
+          "unlessName": "lateral raise|elevacao lateral"
+        }
+      ]
+    },
+    {
+      "match": "costas",
+      "add": [
+        {
+          "exercise": "0178",
+          "sets": 3,
+          "reps": 12,
+          "before": "biceps",
+          "unlessName": "lateral raise|elevacao lateral"
+        },
+        {
+          "exercise": "5656",
+          "sets": 3,
+          "reps": 12,
+          "before": "biceps",
+          "unlessName": "reverse fly|rear delt|face pull|aberturas invertidas|crucifixo inverso|deltoide posterior"
+        }
+      ]
+    },
+    {
+      "match": "perna",
+      "add": [
+        {
+          "exercise": "0432",
+          "sets": 3,
+          "reps": 10,
+          "unlessName": "stiff|romanian|romeno|pernas rigidas"
+        }
+      ]
+    }
+  ]
+}
