@@ -1,0 +1,88 @@
+# Retake Gym: roda uma vez na VPS o scripts/set-routine-style.mjs (tipo de treino pelas repetições),
+# pela aba Actions ("Run workflow"), com a mesma chave SSH do Deploy VPS. Sem "gravar" é só o
+# ensaio; com "gravar" faz backup de data/, para a API uns segundos, grava e sobe a API de novo.
+name: Classificar tipo de treino (VPS)
+
+on:
+  workflow_dispatch:
+    inputs:
+      user:
+        description: 'Perfil (nome, e-mail ou @usuário)'
+        default: 'Victor'
+        required: true
+      apply:
+        description: 'Gravar de verdade (desmarcado = só ensaio)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      HOST: ${{ secrets.VPS_HOST }}
+      SSH_USER: ${{ secrets.VPS_USER }}
+      PORT: ${{ vars.VPS_PORT || '22' }}
+      APP_DIR: ${{ vars.VPS_APP_DIR || '~/retakegym' }}
+    steps:
+      - name: Chave SSH
+        env:
+          KEY: ${{ secrets.VPS_SSH_KEY }}
+          KNOWN: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
+        run: |
+          [ -n "$KEY" ] && [ -n "$HOST" ] && [ -n "$SSH_USER" ] || {
+            echo "::error::Faltam os secrets VPS_SSH_KEY, VPS_HOST e VPS_USER (veja docs/DEPLOY_PT.md, Deploy automático)."; exit 1; }
+          install -d -m 700 ~/.ssh
+          # Uma chave copiada no Windows chega com fim de linha \r\n, que o ssh não lê ("error in
+          # libcrypto"): tira os \r e os espaços nas pontas das linhas.
+          printf '%s\n' "$KEY" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e '/^$/d' > ~/.ssh/deploy
+          chmod 600 ~/.ssh/deploy
+          grep -q -- '-----BEGIN .*PRIVATE KEY-----' ~/.ssh/deploy || {
+            echo "::error::VPS_SSH_KEY não parece uma chave privada (falta a linha -----BEGIN ... PRIVATE KEY-----). Cole o arquivo .key, não o .pub."; exit 1; }
+          ssh-keygen -y -f ~/.ssh/deploy >/dev/null || {
+            echo "::error::O ssh não conseguiu ler a VPS_SSH_KEY. Cole de novo o arquivo .key inteiro, do BEGIN ao END. Se a chave tem senha (passphrase), ela não serve aqui."; exit 1; }
+          if [ -n "$KNOWN" ]; then
+            printf '%s\n' "$KNOWN" | tr -d '\r' > ~/.ssh/known_hosts
+          else
+            echo "::warning::Sem o secret VPS_SSH_KNOWN_HOSTS: usando a chave que o servidor apresentar agora."
+            ssh-keyscan -T 20 -p "$PORT" "$HOST" > ~/.ssh/known_hosts 2>/dev/null
+            [ -s ~/.ssh/known_hosts ] || { echo "::error::A VPS não respondeu no SSH ($HOST:$PORT)."; exit 1; }
+          fi
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Rodar o script
+        env:
+          WHO: ${{ inputs.user }}
+          APPLY: ${{ inputs.apply && '1' || '0' }}
+        run: |
+          WHO_Q=$(printf '%q' "$WHO")
+          ssh -i ~/.ssh/deploy -p "$PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            -o ServerAliveInterval=30 "$SSH_USER@$HOST" \
+            "APP_DIR=$APP_DIR WHO=$WHO_Q APPLY=$APPLY bash -s" <<'REMOTE'
+          set -euo pipefail
+          cd "${APP_DIR/#\~/$HOME}"
+          RUN=(sudo -n docker run --rm -v "$PWD":/repo:ro -v "$PWD/data":/data --entrypoint node retakegym-api:local
+               /repo/scripts/set-routine-style.mjs --repo /repo --data /data --user "$WHO")
+          sudo -n git -c safe.directory="$PWD" log -1 --format='==> Versão no servidor: %h %s'
+          echo "==> Ensaio"
+          "${RUN[@]}" --dry-run
+          if [ "$APPLY" = 1 ]; then
+            B=~/backup-dados-$(date +%F-%H%M).tgz
+            sudo -n tar czf "$B" data && echo "==> Backup: $B"
+            trap 'sudo -n docker compose -f deploy/docker-compose.yml start api' EXIT
+            sudo -n docker compose -f deploy/docker-compose.yml stop api
+            echo "==> Gravando"
+            "${RUN[@]}"
+          fi
+          REMOTE
+
+      - name: Apagar a chave
+        if: always()
+        run: rm -f ~/.ssh/deploy
