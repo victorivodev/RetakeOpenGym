@@ -3910,4 +3910,9 @@ export default {
   "{0} wants to be your friend.": "{0} wants to be your friend.",
   "Send a link with an invite code. Everyone on the app is friends with everyone, so your friend sees the whole group from the start.": "Send a link with an invite code. Everyone on the app is friends with everyone, so your friend sees the whole group from the start.",
   "Nobody else here yet. Send an invite.": "Nobody else here yet. Send an invite.",
+  "Workout type": "Workout type",
+  "More weight, fewer reps": "More weight, fewer reps",
+  "More reps, less weight": "More reps, less weight",
+  "More weight": "More weight",
+  "More reps": "More reps",
 }

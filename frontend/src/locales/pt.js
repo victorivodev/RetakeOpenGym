@@ -3907,4 +3907,9 @@ export default {
   "{0} wants to be your friend.": "{0} quer ser seu amigo.",
   "Send a link with an invite code. Everyone on the app is friends with everyone, so your friend sees the whole group from the start.": "Mande um link com um código de convite. No app todo mundo é amigo de todo mundo, então seu amigo já vê a turma toda desde o começo.",
   "Nobody else here yet. Send an invite.": "Ainda não tem mais ninguém aqui. Mande um convite.",
+  "Workout type": "Tipo de treino",
+  "More weight, fewer reps": "Mais carga, menos repetição",
+  "More reps, less weight": "Mais repetição, menos carga",
+  "More weight": "Mais carga",
+  "More reps": "Mais repetição",
 }

@@ -71,6 +71,7 @@ import { setTrendOn, setTrendsFor, trendGlyph, trendLabel } from '../lib/set-tre
 import { formulaOf } from '../lib/onerm.js'
 import { setNoteOf } from '../lib/set-notes.js'
 import { isOn } from '../lib/modules.js'
+import { styleOfRoutines, styleShort } from '../lib/routine-style.js'
 
 // How long after a key starts a hold the same key is not yet its "Done" (#133). A USB button
 // that bounces, or a double press, sends two presses a moment apart: the first starts the hold,
@@ -1710,6 +1711,8 @@ function ActiveWorkout() {
   const gyms = gymsOf(S)
   const gymNow = activeGym(S)
   const gymSwitchable = !editing && !A.backfill && gyms.length > 1
+  // Retake Gym: the routine's type ("More reps"), beside the time and the set count.
+  const sessionStyle = styleOfRoutines(S.routines, A.routineIds ?? A.routineId)
   const gymShown = editing ? (A.gym?.name || null) : gymSwitchable && gymNow ? gymLabel(gymNow) : null
   const askSwitchGym = g => {
     if (!g || g.id === gymNow?.id) return
@@ -2403,7 +2406,7 @@ function ActiveWorkout() {
       {editing
         ? <button className="iconbtn" aria-label={t('Close editor')} title={t('Close editor')} onClick={() => exitWorkoutEdit()}><Icon name="xmark" /></button>
         : <button className="iconbtn" aria-label={t('Minimize')} title={t('Minimize')} onClick={() => nav('/home')}><Icon name="chevronDown" /></button>}
-      <div className="whdr-mid"><div className="whdr-name">{A.name}</div><div className="sub">{(A.backfill || editing) ? fmtDate(A.d, true) : <Elapsed start={A.start} />} · {t('{0} sets', done + '/' + total)}{!(A.backfill || editing) && isOn(S, 'health') && <LiveHeartRate />}</div>{gymShown && (gymSwitchable
+      <div className="whdr-mid"><div className="whdr-name">{A.name}</div><div className="sub">{(A.backfill || editing) ? fmtDate(A.d, true) : <Elapsed start={A.start} />} · {t('{0} sets', done + '/' + total)}{sessionStyle !== 'normal' && ' · ' + styleShort(sessionStyle)}{!(A.backfill || editing) && isOn(S, 'health') && <LiveHeartRate />}</div>{gymShown && (gymSwitchable
         ? <button type="button" className="whdr-gym" onClick={openGymMenu} aria-label={t('Gym: {0}', gymShown)}><Icon name="house" />{gymShown}</button>
         : <span className="whdr-gym"><Icon name="house" />{gymShown}</span>)}</div>
       {!chipRow && sessionMap}

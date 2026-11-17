@@ -31,6 +31,7 @@ import { WrappedHomeCard } from '../components/WrappedEntry.jsx'
 import RecoveryHint from '../components/RecoveryHint.jsx'
 import { ChallengesCard } from '../components/Challenges.jsx'
 import { isOn } from '../lib/modules.js'
+import { styleOfRoutines, styleShort } from '../lib/routine-style.js'
 
 // Home = what to do now + a quick glance. Deep charts & history live in Stats.
 export default function Home() {
@@ -50,6 +51,8 @@ export default function Home() {
   const todayRoutines = effectiveRoutines(S, todayISO())
   const routine = todayRoutines[0] || null
   const todayName = todayRoutines.map(r => r.name).join(' + ')
+  // Retake Gym: today's workout type ("More reps"), when its routines share one.
+  const todayStyle = styleOfRoutines(todayRoutines, todayRoutines.map(r => r.id))
   // A fulfilled pin (a coach session pinned to today and since done) reads as no override.
   const todayOvr = S.dayPlan[todayISO()] !== undefined && pinState(S, S.dayPlan[todayISO()]) !== 'done'
   // An open editor on a saved workout (lib/session-edit.js) holds S.active too, but it is not a
@@ -174,6 +177,7 @@ export default function Home() {
             <div className="ttl">{S.active ? (editingSaved ? S.active.name : t('{0} (in progress)', S.active.name))
               : doneToday ? (doneToday.name ? t('{0} (done)', doneToday.name) : t('Workout done'))
               : routine ? todayName : t('Rest day')}{todayOvr && routine && !doneToday ? ' · ' + t('rescheduled') : ''}</div>
+            {!S.active && !doneToday && routine && todayStyle !== 'normal' && <div className="ss">{styleShort(todayStyle)}</div>}
             {next && !doneToday && <div className="ss">{t('Next session: {0}, {1}', t(DAYN[next.weekday]), next.routine.name)}</div>}
           </div>
         </div>
