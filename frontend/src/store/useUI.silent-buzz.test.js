@@ -71,7 +71,7 @@ describe('vibrate on silent', () => {
     withSettings({ sound: true, restSound: 'soft' })
     useUI.getState().startRest(2)
     await vi.advanceTimersByTimeAsync(3000)
-    expect(toneNative).toHaveBeenCalledWith('soft', { onSilent: false })
+    expect(toneNative).toHaveBeenCalledWith('soft', { onSilent: false, volume: 1 })
   })
 
   // Discord (baodor): "Play even on silent" goes to the native tone, which rings through the
@@ -80,7 +80,7 @@ describe('vibrate on silent', () => {
     withSettings({ sound: true, restSound: 'bell', soundOnSilent: true })
     useUI.getState().startRest(2)
     await vi.advanceTimersByTimeAsync(3000)
-    expect(toneNative).toHaveBeenCalledWith('bell', { onSilent: true })
+    expect(toneNative).toHaveBeenCalledWith('bell', { onSilent: true, volume: 1 })
   })
 
   it('the end of a rest seen on screen buzzes through alertBuzz', async () => {

@@ -1837,6 +1837,7 @@ export default {
   'Back up': 'Kopia zapasowa',
   'Bring data in': 'Wczytaj dane',
   'Play a sound': 'Odtwórz dźwięk',
+  'Sound volume': 'Głośność dźwięku',
   'Sound': 'Dźwięk',
   'Chime (louder)': 'Gong (głośniej)',
   'Classic beeps': 'Klasyczne piknięcia',

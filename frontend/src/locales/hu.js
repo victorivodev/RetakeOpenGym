@@ -1840,6 +1840,7 @@ export default {
   'Back up': 'Mentés',
   'Bring data in': 'Adatok behozása',
   'Play a sound': 'Hang lejátszása',
+  'Sound volume': 'Hangerő',
   'Sound': 'Hang',
   'Chime (louder)': 'Csengő (hangosabb)',
   'Classic beeps': 'Klasszikus sípolás',

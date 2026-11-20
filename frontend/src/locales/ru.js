@@ -1841,6 +1841,7 @@ export default {
   'Back up': 'Сохранить копию',
   'Bring data in': 'Перенести данные',
   'Play a sound': 'Звуковой сигнал',
+  'Sound volume': 'Громкость',
   'Sound': 'Звук',
   'Chime (louder)': 'Колокольчик (громче)',
   'Classic beeps': 'Классические сигналы',

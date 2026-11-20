@@ -1837,6 +1837,7 @@ export default {
   'Back up': 'Yedekle',
   'Bring data in': 'Veri getir',
   'Play a sound': 'Ses çal',
+  'Sound volume': 'Ses düzeyi',
   'Sound': 'Ses',
   'Chime (louder)': 'Çan (daha yüksek)',
   'Classic beeps': 'Klasik bipler',

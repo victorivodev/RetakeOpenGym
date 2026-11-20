@@ -73,6 +73,10 @@ const setTimbre = (ctx, o, name) => {
 // fade), `timbre` (one of TIMBRES; `bright: true` is the chime's) and `glide` (a frequency the
 // tone slides to by its end, for the whistle) exist for the end-of-rest sounds below.
 const tone = (freq, dur, when, { peak = 0.35, hold = 0, bright = false, timbre = bright ? 'bright' : null, glide = 0 } = {}) => {
+  // Settings → Sound volume scales every tone. The ramps are exponential and cannot reach 0, so a
+  // level that would leave the peak at or under their 0.001 floor plays nothing at all.
+  peak = peak * level
+  if (!(peak > 0.002)) return
   const ctx = wake()
   const o = ctx.createOscillator(), g = ctx.createGain()
   o.connect(g); g.connect(ctx.destination)
@@ -87,6 +91,13 @@ const tone = (freq, dur, when, { peak = 0.35, hold = 0, bright = false, timbre =
   o.start(t0); o.stop(t0 + dur + 0.05)
   sleepAfter(when + dur + 0.05)
 }
+
+// Settings → Sound volume (S.soundVolume, lib/rest-sounds.js soundVolumeOf): how loud the app's own
+// sounds are, as a share of what they always were, on top of the phone's volume. A page-level
+// setting like setVibrate, applied by App.jsx. The apps' native end tone takes the same level
+// (lib/rest-alert.js setNativeVolume).
+let level = 1
+export function setSoundVolume(v) { level = Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1 }
 
 export function beep(enabled, freq, dur, when) {
   if (!enabled) return

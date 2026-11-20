@@ -639,6 +639,27 @@ public final class RestAlert {
         new Thread(() -> playSound(ctx, tone), "opengym-tone").start();
     }
 
+    /**
+     * Settings → Sound volume (lib/rest-sounds.js soundVolumeOf), 0 to 1: how loud the tone plays,
+     * on top of the phone's media volume. Kept in preferences, since the alarm that rings a
+     * locked phone fires with the page asleep or the app closed.
+     */
+    private static final String PREFS = "opengym-rest-tone";
+    private static final String PREF_VOLUME = "volume";
+
+    static void setVolume(Context ctx, double volume) {
+        float v = (float) Math.max(0, Math.min(1, Double.isNaN(volume) ? 1 : volume));
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putFloat(PREF_VOLUME, v).apply();
+    }
+
+    static float volumeOf(Context ctx) {
+        try {
+            return ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getFloat(PREF_VOLUME, 1f);
+        } catch (Exception e) {
+            return 1f;
+        }
+    }
+
     private static void playSound(Context ctx, String tone) {
         playClip(ctx, RestTone.render(tone));
     }
@@ -700,7 +721,7 @@ public final class RestAlert {
                 frames = track.write(samples, 0, samples.length);
                 if (frames <= 0) { Log.w("openGym", "rest tone: write returned " + frames); return; }
             }
-            track.setVolume(1f);
+            track.setVolume(volumeOf(ctx));
             am = (AudioManager) ctx.getSystemService(Context.AUDIO_SERVICE);
             focus = duck(am, attrs);
             stopCurrent();

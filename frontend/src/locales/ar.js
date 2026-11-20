@@ -1892,6 +1892,7 @@ export default {
   'Back up': 'النسخ الاحتياطي',
   'Bring data in': 'إحضار البيانات',
   'Play a sound': 'تشغيل صوت',
+  'Sound volume': 'مستوى الصوت',
   'Sound': 'الصوت',
   'Chime (louder)': 'رنين (أعلى)',
   'Classic beeps': 'صفارات كلاسيكية',

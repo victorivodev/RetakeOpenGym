@@ -1837,6 +1837,7 @@ export default {
   'Back up': '백업하기',
   'Bring data in': '데이터 가져오기',
   'Play a sound': '소리 재생',
+  'Sound volume': '소리 크기',
   'Sound': '소리',
   'Chime (louder)': '차임 (더 크게)',
   'Classic beeps': '클래식 비프음',

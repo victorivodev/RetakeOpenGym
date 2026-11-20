@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { uid } from '../lib/format.js'
 import { beep, chime, vibrate, alertBuzz } from '../lib/sound.js'
-import { restSoundOf } from '../lib/rest-sounds.js'
+import { restSoundOf, soundVolumeOf } from '../lib/rest-sounds.js'
 import { api } from '../lib/api.js'
 import { t } from '../lib/i18n.js'
 import { deviceId } from '../lib/push.js'
@@ -267,8 +267,9 @@ const runRest = (set, get) => {
 function endTone(enabled, kind) {
   if (!enabled) return
   if (!MOBILE) { chime(enabled, kind); return }
-  const onSilent = useStore.getState().S.soundOnSilent === true
-  toneNative(kind === true ? 'classic' : kind, { onSilent }).then(ok => { if (!ok) chime(enabled, kind) })
+  const S = useStore.getState().S
+  const onSilent = S.soundOnSilent === true
+  toneNative(kind === true ? 'classic' : kind, { onSilent, volume: soundVolumeOf(S) }).then(ok => { if (!ok) chime(enabled, kind) })
 }
 
 export const useUI = create((set, get) => ({

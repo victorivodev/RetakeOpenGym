@@ -1830,6 +1830,7 @@ export default {
   'Back up': '備份',
   'Bring data in': '匯入資料',
   'Play a sound': '播放提示音',
+  'Sound volume': '音量',
   'Sound': '提示音',
   'Chime (louder)': '鈴聲（較大聲）',
   'Classic beeps': '經典嗶聲',

@@ -1837,6 +1837,7 @@ export default {
   'Back up': '备份',
   'Bring data in': '导入数据',
   'Play a sound': '播放提示音',
+  'Sound volume': '音量',
   'Sound': '提示音',
   'Chime (louder)': '铃声（更响）',
   'Classic beeps': '经典哔声',

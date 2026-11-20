@@ -1848,6 +1848,7 @@ export default {
   'Back up': 'สำรองข้อมูล',
   'Bring data in': 'นำข้อมูลเข้า',
   'Play a sound': 'เล่นเสียง',
+  'Sound volume': 'ระดับเสียง',
   'Sound': 'เสียง',
   'Chime (louder)': 'เสียงกริ่ง (ดังกว่า)',
   'Classic beeps': 'เสียงบี๊บแบบคลาสสิก',

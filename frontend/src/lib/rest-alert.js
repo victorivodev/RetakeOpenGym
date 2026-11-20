@@ -179,10 +179,23 @@ export function buzzAsAlarm(pattern) {
 // to play the page's own chime instead. Never resolves with the plugin itself — see restPlugin.
 // `onSilent` is Settings → "Play even on silent": the iPhone then plays the tone through the
 // ring/silent switch, still mixing with the music and only turning it down (RestAlertPlugin.swift).
-export function toneNative(kind, { onSilent = false } = {}) {
+// `volume` is Settings → Sound volume, 0 to 1 (lib/rest-sounds.js soundVolumeOf).
+export function toneNative(kind, { onSilent = false, volume = 1 } = {}) {
   if (!MOBILE) return Promise.resolve(false)
   return restPlugin()
-    .then(plugin => (plugin ? plugin.RestAlert.tone({ kind: String(kind || 'chime'), onSilent: onSilent === true }).then(() => true) : false))
+    .then(plugin => (plugin ? plugin.RestAlert.tone({ kind: String(kind || 'chime'), onSilent: onSilent === true, volume: clampVolume(volume) }).then(() => true) : false))
+    .catch(() => false)
+}
+
+const clampVolume = v => (Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1)
+
+// Settings → Sound volume for the tone a locked Android phone plays at the end of a rest, which the
+// page is not awake to hand over: the native side keeps the level (RestAlert.setVolume). An app
+// from before it has no such method; the call fails quietly and that tone stays at full volume.
+export function setNativeVolume(volume) {
+  if (!MOBILE) return Promise.resolve(false)
+  return restPlugin()
+    .then(plugin => (plugin ? plugin.RestAlert.setVolume({ volume: clampVolume(volume) }).then(() => true) : false))
     .catch(() => false)
 }
 

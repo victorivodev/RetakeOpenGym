@@ -17,7 +17,7 @@ import { dumbbellsOf, ownsNoDumbbells } from '../lib/dumbbells.js'
 import { effortOf } from '../lib/history.js'
 import { figureOf } from '../lib/exercises.js'
 import { unlock, chime, playOnSilentSupported, vibrateSupported, appleTouchDevice } from '../lib/sound.js'
-import { REST_SOUND_IDS, restSoundOf } from '../lib/rest-sounds.js'
+import { REST_SOUND_IDS, restSoundOf, soundVolumeOf, SOUND_VOLUME_MIN } from '../lib/rest-sounds.js'
 import { scheduleModeOf, chooseFixedWeek, chooseRotation } from '../lib/rotation.js'
 import { queueOf } from '../lib/queue.js'
 import { weekTargetOf } from '../lib/week-left.js'
@@ -61,7 +61,7 @@ import { DeleteAccountRow } from '../components/DeleteAccount.jsx'
 import { EmailAuth, emailLoginOn } from '../components/EmailAuth.jsx'
 import { ProfileRow, Avatar } from '../components/Profile.jsx'
 import { warmupAutoOf } from '../lib/warmup-ramp.js'
-import { Section, Row, SelectRow, Switch, Segmented, Button, TextField, SearchField } from '../components/ui.jsx'
+import { Section, Row, SelectRow, Switch, Segmented, Button, TextField, SearchField, Slider } from '../components/ui.jsx'
 import { POLICIES_FOR, POLICY_NAME, POLICY_DESC, profileRule } from '../lib/progression.js'
 import { PAGES, ROOT_GROUPS, pageVisible, searchSettings, pageTrail } from './settings-pages.js'
 import { platformNow } from '../lib/platform-now.js'
@@ -753,6 +753,13 @@ export default function Settings({ page = null, find = null, via = null, entryKe
               sheet plays each one as you tap it (restSoundSheet). */}
           {S.sound && <Row icon="speaker" iconTint="var(--pink)" title={t('Sound')} value={t(REST_SOUND_LABEL[restSoundOf(S)])}
             accessory="chevron" onClick={restSoundSheet} />}
+          {/* How loud the app's own sounds play, on top of the phone's volume: the end of a rest,
+              the 3-2-1 and the set ticks, and the apps' native end tone. The pick plays once the
+              knob settles, at the new level (previewVolume). */}
+          {S.sound && <Row icon="speaker" iconTint="var(--pink)" title={t('Sound volume')} value={Math.round(soundVolumeOf(S) * 100) + '%'}>
+            <Slider className="sld-row" value={Math.round(soundVolumeOf(S) * 100)} min={SOUND_VOLUME_MIN} max={100} step={5}
+              onChange={v => { update(s => { s.soundVolume = v }); previewVolume() }} />
+          </Row>}
           {/* iOS only (WebKit's audio-session API, iOS 17+): with it off the ring/silent switch
               mutes the timer. On, in Safari the phone treats the timer like a music player
               (exclusive, and the music app is not told it may resume), so it is a choice, off by
@@ -1406,6 +1413,16 @@ const REST_SOUND_HINT = {
   beep: 'Your sports watch, calling you back.',
   whistle: 'Coach wants you back on the bar.',
   soft: 'Gentle, for headphones or a quiet room.',
+}
+// Settings → Sound volume: the chosen sound once the knob has stopped, not at every step of a drag.
+// App.jsx applies the new level to lib/sound.js on the same render, before this fires.
+let previewTm = null
+function previewVolume() {
+  unlock(true)
+  clearTimeout(previewTm)
+  previewTm = setTimeout(() => {
+    chime(true, restSoundOf(useStore.getState().S))
+  }, 350)
 }
 export function pickRestSound(id) {
   unlock(true)

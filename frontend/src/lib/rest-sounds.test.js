@@ -4,7 +4,7 @@
 // the page plays from: a note changed on one side only fails here.
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { REST_SOUNDS, REST_SOUND_IDS } from './rest-sounds.js'
+import { REST_SOUNDS, REST_SOUND_IDS, SOUND_VOLUME_MIN, soundVolumeOf } from './rest-sounds.js'
 import { TIMBRES } from './sound.js'
 
 const java = name => readFileSync(new URL(`../../android/app/src/main/java/ch/duartesantos/opengym/${name}.java`, import.meta.url), 'utf8')
@@ -61,5 +61,18 @@ describe('RestTone.java plays what the page plays', () => {
     const alert = java('RestAlert')
     expect(alert).toMatch(/intent\.getStringExtra\("tone"\)/)
     expect(alert).toMatch(/RestTone\.render\(tone\)/)
+  })
+})
+
+describe('soundVolumeOf (Settings → Sound volume)', () => {
+  it('is full volume for a profile that never set it', () => {
+    expect(soundVolumeOf({})).toBe(1)
+    expect(soundVolumeOf(null)).toBe(1)
+    expect(soundVolumeOf({ soundVolume: 'x' })).toBe(1)
+  })
+  it('reads percent, kept between the minimum and 100', () => {
+    expect(soundVolumeOf({ soundVolume: 40 })).toBe(0.4)
+    expect(soundVolumeOf({ soundVolume: 0 })).toBe(SOUND_VOLUME_MIN / 100)
+    expect(soundVolumeOf({ soundVolume: 250 })).toBe(1)
   })
 })

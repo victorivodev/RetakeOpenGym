@@ -1879,6 +1879,7 @@ export default {
   'Back up': 'ব্যাকআপ নিন',
   'Bring data in': 'ডেটা আনুন',
   'Play a sound': 'একটি শব্দ বাজান',
+  'Sound volume': 'শব্দের ভলিউম',
   'Sound': 'শব্দ',
   'Chime (louder)': 'চাইম (জোরালো)',
   'Classic beeps': 'ক্লাসিক বিপ',

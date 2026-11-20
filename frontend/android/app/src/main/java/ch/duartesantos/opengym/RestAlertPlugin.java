@@ -140,7 +140,24 @@ public class RestAlertPlugin extends Plugin {
             call.reject("no context");
             return;
         }
+        // Settings → Sound volume rides along with each tone, so a level changed since the last
+        // setVolume call is already the one heard.
+        Double volume = call.getDouble("volume");
+        if (volume != null) RestAlert.setVolume(ctx.getApplicationContext(), volume);
         RestAlert.playNow(ctx.getApplicationContext(), call.getString("kind", "chime"));
+        call.resolve();
+    }
+
+    /** Settings → Sound volume, 0 to 1, for the tones the native side plays (RestAlert.volumeOf). */
+    @PluginMethod
+    public void setVolume(PluginCall call) {
+        Context ctx = getContext();
+        if (ctx == null) {
+            call.reject("no context");
+            return;
+        }
+        Double volume = call.getDouble("volume");
+        RestAlert.setVolume(ctx.getApplicationContext(), volume == null ? 1 : volume);
         call.resolve();
     }
 
