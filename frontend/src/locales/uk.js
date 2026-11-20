@@ -1834,6 +1834,7 @@ export default {
   'Back up': 'Зберегти копію',
   'Bring data in': 'Перенести дані',
   'Play a sound': 'Звуковий сигнал',
+  'Sound volume': 'Гучність',
   'Sound': 'Звук',
   'Chime (louder)': 'Дзвіночок (гучніше)',
   'Classic beeps': 'Класичні сигнали',

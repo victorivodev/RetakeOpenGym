@@ -86,7 +86,8 @@ describe('Settings — play sounds when the phone is on silent', () => {
     expect(row).toBeTruthy()
     expect(row.querySelector('.lrow-s').textContent).toBe('Music playing on this phone stops during a workout and does not resume by itself.iPhone only')
     const rows = [...host.querySelectorAll('.lrow')]
-    expect(rows.indexOf(row)).toBe(rows.indexOf(rowTitled('Sound')) + 1)
+    expect(rows.indexOf(rowTitled('Sound volume'))).toBe(rows.indexOf(rowTitled('Sound')) + 1)
+    expect(rows.indexOf(row)).toBe(rows.indexOf(rowTitled('Sound volume')) + 1)
   })
 
   it('is not offered where the browser has no audio session API', () => {
@@ -249,5 +250,31 @@ describe('Settings — which sound', () => {
 
     act(() => { [...host.querySelectorAll('button')].find(b => b.textContent === 'Done').click() })
     expect(close).toHaveBeenCalled()
+  })
+})
+
+// Victor: "Tem como abaixar o volume da notificacao do app?" How loud the app's own sounds play.
+describe('Settings — sound volume', () => {
+  it('shows full volume by default and only while Sounds is on', () => {
+    mount()
+    expect(rowTitled('Sound volume').querySelector('.lrow-v').textContent).toBe('100%')
+    mocks.S.sound = false
+    mount()
+    expect(rowTitled('Sound volume')).toBeUndefined()
+  })
+
+  it('writes soundVolume from the slider and plays the sound once it settles', () => {
+    vi.useFakeTimers()
+    try {
+      mocks.S.soundVolume = 60
+      mount()
+      const slider = rowTitled('Sound volume').querySelector('[role="slider"]')
+      expect(slider.getAttribute('aria-valuenow')).toBe('60')
+      act(() => { slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true })) })
+      expect(mocks.S.soundVolume).toBeLessThan(60)
+      expect(chime).not.toHaveBeenCalled()
+      act(() => { vi.advanceTimersByTime(400) })
+      expect(chime).toHaveBeenCalledTimes(1)
+    } finally { vi.useRealTimers() }
   })
 })

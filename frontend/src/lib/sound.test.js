@@ -514,3 +514,31 @@ describe('alertBuzz', () => {
     expect(calls).toEqual([])
   })
 })
+
+// Settings → Sound volume (S.soundVolume): every tone, beep or chime, scaled by one page-level level.
+describe('sound volume', () => {
+  const peakOf = events => Math.max(...events.map(([, v]) => v))
+  it('plays at full volume until a level is set', () => {
+    sound.beep(true, 880, 0.18)
+    expect(peakOf(ctx().gains[0])).toBe(0.35)
+  })
+  it('scales the beeps and the chime by the level', () => {
+    sound.setSoundVolume(0.5)
+    sound.beep(true, 880, 0.18)
+    sound.chime(true, 'chime')
+    expect(peakOf(ctx().gains[0])).toBeCloseTo(0.175)
+    for (const g of ctx().gains.slice(1)) expect(peakOf(g)).toBeCloseTo(sound.CHIME_PEAK * 0.5)
+  })
+  it('plays nothing at a level too low to hear', () => {
+    sound.setSoundVolume(0)
+    sound.beep(true, 880, 0.18)
+    expect(FakeCtx.instances).toHaveLength(0)
+  })
+  it('clamps an odd value and treats garbage as full volume', () => {
+    sound.setSoundVolume(3)
+    sound.beep(true, 880, 0.18)
+    sound.setSoundVolume(NaN)
+    sound.beep(true, 880, 0.18)
+    expect(ctx().gains.map(peakOf)).toEqual([0.35, 0.35])
+  })
+})

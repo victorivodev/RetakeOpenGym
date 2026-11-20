@@ -1837,6 +1837,7 @@ export default {
   'Back up': 'बैकअप लें',
   'Bring data in': 'डेटा लाएँ',
   'Play a sound': 'आवाज़ बजाएँ',
+  'Sound volume': 'आवाज़ का स्तर',
   'Sound': 'आवाज़',
   'Chime (louder)': 'चाइम (तेज़)',
   'Classic beeps': 'क्लासिक बीप',

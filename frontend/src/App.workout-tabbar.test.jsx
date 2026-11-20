@@ -7,7 +7,7 @@ import { DEF, useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 
 vi.mock('./lib/sound.js', () => ({
-  setPlayOnSilent: vi.fn(), setVibrate: vi.fn(), setAlarmBuzzer: vi.fn(),
+  setPlayOnSilent: vi.fn(), setVibrate: vi.fn(), setAlarmBuzzer: vi.fn(), setSoundVolume: vi.fn(),
   beep: vi.fn(), chime: vi.fn(), vibrate: vi.fn(), alertBuzz: vi.fn(), unlock: vi.fn(),
 }))
 vi.mock('./lib/api.js', async importOriginal => ({

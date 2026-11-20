@@ -28,6 +28,7 @@ public class RestAlertPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDe
         CAPPluginMethod(name: "cancel", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "hold", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "tone", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setVolume", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "buzz", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setAccent", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "speak", returnType: CAPPluginReturnPromise),
@@ -167,11 +168,22 @@ public class RestAlertPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDe
         }
     }
 
+    /**
+     * Settings → Sound volume. The Android app keeps it for the tone a locked phone plays; here the
+     * locked phone rings through a notification sound, which iOS plays at the phone's own
+     * volume, and `tone` takes the level with each call. Resolves so the page need not ask.
+     */
+    @objc func setVolume(_ call: CAPPluginCall) {
+        call.resolve()
+    }
+
     @objc func tone(_ call: CAPPluginCall) {
         let kind = RestTone.normalised(call.getString("kind"))
         // Settings → "Play even on silent": .playback rings through the switch, and mixing plus
         // ducking keeps it from stopping the music, which only turns down for the tone.
         let onSilent = call.getBool("onSilent") ?? false
+        // Settings → Sound volume, 0 to 1, on top of the phone's own volume.
+        let volume = Float(max(0, min(1, call.getDouble("volume") ?? 1)))
         DispatchQueue.global(qos: .userInitiated).async {
             guard let url = RestTone.soundFile(kind) else {
                 call.reject("no sound file")
@@ -191,6 +203,7 @@ public class RestAlertPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDe
                     try session.setActive(true)
                     let p = try AVAudioPlayer(contentsOf: url)
                     self.player = p
+                    p.volume = volume
                     p.play()
                     DispatchQueue.main.asyncAfter(deadline: .now() + p.duration + 0.1) {
                         guard self.player === p else { return }   // a newer tone owns the session now

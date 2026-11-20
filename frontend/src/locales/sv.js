@@ -1858,6 +1858,7 @@ export default {
   'Back up': 'Säkerhetskopiera',
   'Bring data in': 'Hämta in data',
   'Play a sound': 'Spela ett ljud',
+  'Sound volume': 'Ljudvolym',
   'Sound': 'Ljud',
   'Chime (louder)': 'Klocka (högre)',
   'Classic beeps': 'Klassiska pip',

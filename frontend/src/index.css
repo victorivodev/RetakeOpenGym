@@ -1108,6 +1108,7 @@ body.chips-dragging *{cursor:inherit}
 
 /* --- slider --- */
 .sld{position:relative;height:32px;display:flex;align-items:center;cursor:pointer;touch-action:none}
+.sld-row{flex:1;min-width:96px;max-width:180px;margin-inline:12px 4px}
 .sld-track{
   position:absolute;inset-inline-start:0;inset-inline-end:0;height:6px;border-radius:99px;
   background:var(--surface-3);overflow:hidden;

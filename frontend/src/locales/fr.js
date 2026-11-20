@@ -1837,6 +1837,7 @@ export default {
   'Back up': 'Sauvegarder',
   'Bring data in': 'Importer des données',
   'Play a sound': 'Jouer un son',
+  'Sound volume': 'Volume du son',
   'Sound': 'Son',
   'Chime (louder)': 'Carillon (plus fort)',
   'Classic beeps': 'Bips classiques',

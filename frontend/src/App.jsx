@@ -9,8 +9,9 @@ import { accentValue, applyAccent } from './lib/accent.js'
 import { seasonAccent } from './lib/seasonal.js'
 import { setLang, useLang, baseLang } from './lib/i18n.js'
 import { effectiveLang } from './lib/default-lang.js'
-import { setPlayOnSilent, setVibrate, setAlarmBuzzer, setNativeBuzzer } from './lib/sound.js'
-import { buzzAsAlarm } from './lib/rest-alert.js'
+import { setPlayOnSilent, setVibrate, setAlarmBuzzer, setNativeBuzzer, setSoundVolume } from './lib/sound.js'
+import { soundVolumeOf } from './lib/rest-sounds.js'
+import { buzzAsAlarm, setNativeVolume } from './lib/rest-alert.js'
 import { setNav, notePath, keyBefore, navToWorkout, nav } from './lib/nav.js'
 import { onGymReminderOpen } from './lib/gym-reminder.js'
 import { autoGymHere } from './lib/gym-auto.js'
@@ -135,6 +136,9 @@ function Shell() {
   useEffect(() => { setPlayOnSilent(!!S.soundOnSilent) }, [S.soundOnSilent])
   // Settings → Vibrate, the same way: one page-level switch rather than a check at each buzz.
   useEffect(() => { setVibrate(S.vibrate !== false) }, [S.vibrate])
+  // Settings → Sound volume: how loud the app's own sounds are, on the page and in the apps' native end
+  // tone (which a locked Android phone plays without the page, so it keeps its own copy).
+  useEffect(() => { const v = soundVolumeOf(S); setSoundVolume(v); setNativeVolume(v) }, [S.soundVolume])
   // Android app: "Vibrate when the phone is on silent" sends the end-of-rest buzz through the
   // native side as an alarm (#375). buzzAsAlarm answers false off Android, so iOS buzzes as before.
   useEffect(() => { setAlarmBuzzer(MOBILE && S.vibrate !== false && S.vibrateOnSilent ? buzzAsAlarm : null) }, [S.vibrate, S.vibrateOnSilent])

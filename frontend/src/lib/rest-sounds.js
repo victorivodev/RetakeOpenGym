@@ -32,3 +32,14 @@ export function restSoundOf(S) {
   return Object.hasOwn(REST_SOUNDS, k) && k !== 'classic' ? k : 'chime'
 }
 
+
+/**
+ * Settings → Sound volume: how loud the app's sounds play, 0 to 1, from `S.soundVolume` in percent
+ * (5 to 100, in steps of 5). A profile that never set it plays at full volume, as before.
+ */
+export const SOUND_VOLUME_MIN = 5
+export function soundVolumeOf(S) {
+  const v = Number(S?.soundVolume)
+  if (S?.soundVolume == null || !Number.isFinite(v)) return 1
+  return Math.min(100, Math.max(SOUND_VOLUME_MIN, Math.round(v))) / 100
+}

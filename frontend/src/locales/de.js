@@ -1857,6 +1857,7 @@ export default {
   'Back up': 'Sichern',
   'Bring data in': 'Daten übernehmen',
   'Play a sound': 'Ton abspielen',
+  'Sound volume': 'Lautstärke',
   'Sound': 'Ton',
   'Chime (louder)': 'Gong (lauter)',
   'Classic beeps': 'Klassische Pieptöne',

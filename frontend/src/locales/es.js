@@ -1837,6 +1837,7 @@ export default {
   'Back up': 'Hacer copia',
   'Bring data in': 'Traer datos',
   'Play a sound': 'Reproducir un sonido',
+  'Sound volume': 'Volumen del sonido',
   'Sound': 'Sonido',
   'Chime (louder)': 'Campanilla (más fuerte)',
   'Classic beeps': 'Pitidos clásicos',
