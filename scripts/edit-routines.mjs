@@ -15,6 +15,17 @@
  *       "dropLast": { "target": "triceps", "keep": 2 } } ] }   // optional: removes the last ones
  *                                                              //   with this target beyond `keep`
  *
+ * Or a routine can be given in full, in order, with "set" (then "add" and "dropLast" are ignored):
+ *
+ *     { "match": "perna", "set": [
+ *       { "exercise": "3281", "keep": "agachamento.*smith|smith squat",   // `keep`: a slot of the
+ *         "sets": 3, "repsMin": 10, "reps": 12, "restSec": 90 },          //   routine whose name
+ *       { "exercise": "2393", "sets": 3, "repsMin": 20, "reps": 24,       //   matches stays (its
+ *         "restSec": 60, "side": true } ] }                               //   exercise, weight, note,
+ *                                                                         //   warm-ups); else `exercise`
+ *   Slots of the routine that nothing in the list keeps are removed. `side` is per side: reps are
+ *   both sides' total (lib/history.js), so "10-12 each arm" is repsMin 20, reps 24.
+ *
  * An exercise the routine already has is never added twice. A superset is never split: an
  * exercise is inserted after the group, and a group left with one exercise stops being one.
  * Logged workouts are not touched. Written the way PUT /api/data writes a document (as
@@ -74,8 +85,15 @@ const custom = id => (next.customEx || []).find(c => c?.id === id)
 const nameOf = id => custom(id)?.n || ptNames[id] || EXIDX[id]?.n || id
 const namesOf = id => [custom(id)?.n, ptNames[id], EXIDX[id]?.n, ...[].concat((next.exAliases || {})[id] || [])].filter(x => typeof x === 'string' && x)
 const targetOf = id => plain(custom(id)?.tg || EXIDX[id]?.tg || '')
-const setsOf = e => (e.mode === 'time' ? `${e.sets || 1}x${e.sec || 45}s` : `${e.sets || 1}x${e.repsMin > 0 && e.repsMin < e.reps ? e.repsMin + '-' : ''}${e.reps ?? '?'}`)
-const show = list => list.map((e, i) => `    ${i + 1}. ${nameOf(e.id)} ${setsOf(e)}${e.weight ? ` @ ${e.weight}` : ''}`).join('\n')
+const half = n => (n > 0 ? Math.round(n / 2) : n)
+const repsTxt = e => {
+  const lo = e.repsMin > 0 && e.repsMin < e.reps ? e.repsMin : null
+  if (!e.side) return `${lo ? lo + '-' : ''}${e.reps ?? '?'}`
+  return `${lo ? half(lo) + '-' : ''}${half(e.reps) ?? '?'} por lado`
+}
+const restTxt = e => (e.restOff ? ', sem descanso' : e.restSec > 0 ? `, descanso ${e.restSec}s` : '')
+const setsOf = e => (e.mode === 'time' ? `${e.sets || 1}x${e.sec || 45}s` : `${e.sets || 1}x${repsTxt(e)}`)
+const show = list => list.map((e, i) => `    ${i + 1}. ${nameOf(e.id)} ${setsOf(e)}${restTxt(e)}${e.weight ? ` @ ${e.weight}` : ''}`).join('\n')
 
 // A superset tag left on one exercise is not a superset (session-routines.js groupIds).
 const tidyGroups = list => {
@@ -91,14 +109,43 @@ for (const rule of spec.routines || []) {
   r.ex = Array.isArray(r.ex) ? r.ex : []
   const before = r.ex.map(e => ({ ...e }))
   const notes = []
-  if (rule.dropLast) {
+  if (Array.isArray(rule.set)) {
+    const left = r.ex.slice()
+    const out = []
+    for (const a of rule.set) {
+      let slot = null
+      if (a.keep) {
+        const re = new RegExp(a.keep, 'i')
+        const at = left.findIndex(e => e.id === a.exercise || namesOf(e.id).some(n => re.test(plain(n))))
+        if (at >= 0) slot = left.splice(at, 1)[0]
+      } else {
+        const at = left.findIndex(e => e.id === a.exercise)
+        if (at >= 0) slot = left.splice(at, 1)[0]
+      }
+      if (!slot && !EXIDX[a.exercise]) { notes.push(`? ${a.exercise} não está no catálogo; pulado`); continue }
+      const cfg = slot ? { ...slot } : { id: a.exercise, weight: 0, mode: 'reps' }
+      cfg.mode = 'reps'
+      cfg.sets = a.sets || 3
+      cfg.reps = a.reps || 10
+      if (a.repsMin > 0 && a.repsMin < cfg.reps) cfg.repsMin = a.repsMin
+      else delete cfg.repsMin
+      if (a.side) cfg.side = true
+      else delete cfg.side
+      if (a.restSec > 0) { cfg.restSec = a.restSec; delete cfg.restOff }
+      delete cfg.sg
+      out.push(cfg)
+      notes.push(slot ? `~ mantém ${nameOf(cfg.id)}: ${setsOf(cfg)}${restTxt(cfg)}` : `+ põe ${nameOf(cfg.id)} ${setsOf(cfg)}${restTxt(cfg)}`)
+    }
+    for (const e of left) notes.push(`- tira ${nameOf(e.id)}`)
+    r.ex.splice(0, r.ex.length, ...out)
+  } else if (rule.dropLast) {
     const t = plain(rule.dropLast.target)
     const idx = r.ex.map((e, i) => (targetOf(e.id) === t ? i : -1)).filter(i => i >= 0)
     const drop = idx.slice(Math.max(0, rule.dropLast.keep ?? idx.length))
     for (const i of drop.reverse()) { notes.push(`- tira ${nameOf(r.ex[i].id)}`); r.ex.splice(i, 1) }
     tidyGroups(r.ex)
   }
-  for (const a of rule.add || []) {
+  for (const a of Array.isArray(rule.set) ? [] : rule.add || []) {
     if (!EXIDX[a.exercise]) { notes.push(`? ${a.exercise} não está no catálogo; pulado`); continue }
     if (r.ex.some(e => e.id === a.exercise)) { notes.push(`= ${nameOf(a.exercise)} já está na rotina`); continue }
     if (a.unlessName) {
@@ -118,6 +165,12 @@ for (const rule of spec.routines || []) {
   if (!same) changed++
   console.log(`\n${same ? '=' : '✓'} ${r.name}\n  Antes:\n${show(before)}\n  ${notes.join('\n  ')}${same ? '' : `\n  Depois:\n${show(r.ex)}`}`)
 }
+
+const rot = next.rotation
+if (rot && Array.isArray(rot.sequence)) {
+  const label = id => (id === 'rest' ? 'descanso' : routines.find(x => x.id === id)?.name || id)
+  console.log(`\nRodízio (${next.scheduleMode || 'semana'}): ${rot.sequence.map(label).join(' → ')}`)
+} else if (next.week) console.log(`\nSemana: ${JSON.stringify(next.week)}`)
 
 console.log('')
 if (!changed) { console.log('Nada para gravar.'); process.exit(0) }

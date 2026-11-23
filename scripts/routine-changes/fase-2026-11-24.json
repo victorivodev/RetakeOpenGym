@@ -1,0 +1,40 @@
+{
+  "about": "Fase de 24/11/2026 a 20/12/2026: as 3 rotinas do Victor por inteiro, na ordem, com séries, repetições e descanso. Carga fica com ele (quem continua mantém o peso; os novos começam em 0).",
+  "routines": [
+    {
+      "match": "peito",
+      "set": [
+        { "exercise": "0025", "keep": "supino reto|bench press", "sets": 3, "repsMin": 10, "reps": 12, "restSec": 90 },
+        { "exercise": "0314", "keep": "^supino inclinado com halteres$", "sets": 3, "repsMin": 10, "reps": 12, "restSec": 90 },
+        { "exercise": "0405", "keep": "^desenvolvimento de ombro sentado com halter$", "sets": 3, "repsMin": 10, "reps": 12, "restSec": 90 },
+        { "exercise": "0596", "keep": "^crucifixo sentado na maquina$", "sets": 3, "repsMin": 10, "reps": 12, "restSec": 60 },
+        { "exercise": "0334", "keep": "^elevacao lateral com halteres$", "sets": 3, "repsMin": 12, "reps": 15, "restSec": 60 },
+        { "exercise": "0201", "keep": "^triceps pulley no cabo$", "sets": 3, "repsMin": 10, "reps": 12, "restSec": 60 },
+        { "exercise": "3353", "sets": 3, "repsMin": 24, "reps": 30, "restSec": 45, "side": true }
+      ]
+    },
+    {
+      "match": "perna",
+      "set": [
+        { "exercise": "3281", "keep": "agachamento.*smith|smith.*squat", "sets": 3, "repsMin": 10, "reps": 12, "restSec": 90 },
+        { "exercise": "0739", "keep": "^leg press 45", "sets": 3, "repsMin": 10, "reps": 12, "restSec": 90 },
+        { "exercise": "0432", "keep": "pernas rigidas com halter|stiff leg deadlift", "sets": 3, "repsMin": 10, "reps": 12, "restSec": 90 },
+        { "exercise": "0586", "keep": "^mesa flexora deitada", "sets": 3, "repsMin": 10, "reps": 12, "restSec": 60 },
+        { "exercise": "0585", "keep": "^cadeira extensora", "sets": 3, "repsMin": 10, "reps": 12, "restSec": 60 },
+        { "exercise": "0597", "keep": "^abducao de quadril sentado na maquina", "sets": 3, "repsMin": 12, "reps": 15, "restSec": 60 },
+        { "exercise": "0605", "keep": "^panturrilha em pe na maquina$", "sets": 3, "repsMin": 12, "reps": 15, "restSec": 60 }
+      ]
+    },
+    {
+      "match": "costas",
+      "set": [
+        { "exercise": "2291", "sets": 3, "repsMin": 10, "reps": 12, "restSec": 90 },
+        { "exercise": "0180", "keep": "^remada sentada baixa no cabo$", "sets": 3, "repsMin": 10, "reps": 12, "restSec": 90 },
+        { "exercise": "2393", "sets": 3, "repsMin": 20, "reps": 24, "restSec": 60, "side": true },
+        { "exercise": "0602", "keep": "^crucifixo invertido sentado na maquina", "sets": 3, "repsMin": 10, "reps": 12, "restSec": 60 },
+        { "exercise": "0447", "keep": "^rosca direta com barra ez$", "sets": 3, "repsMin": 10, "reps": 12, "restSec": 60 },
+        { "exercise": "0313", "keep": "^rosca martelo com halteres", "sets": 3, "repsMin": 10, "reps": 12, "restSec": 60 }
+      ]
+    }
+  ]
+}
