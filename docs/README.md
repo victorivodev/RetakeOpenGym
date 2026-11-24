@@ -1,5 +1,8 @@
 # openGym documentation
 
+**Retake Gym:** o documento completo em português (o que é, funcionalidades, arquitetura, deploy,
+API e como integrar) é o [RETAKE_GYM_PT.md](RETAKE_GYM_PT.md). Para colocar no ar, [DEPLOY_PT.md](DEPLOY_PT.md).
+
 Pick the part that matches what you're doing. If you just have a question, try the
 [FAQ](FAQ.md) first.
 
